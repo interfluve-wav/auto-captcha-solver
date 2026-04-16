@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.1 (2026-04-16)
+
+- Fix: hCaptcha sitekey extraction from iframe URL fragments
+- Fix: detect hCaptcha when iframes are cross-origin
+
 ## 0.1.0 (2026-04-16)
 
 Initial release.
