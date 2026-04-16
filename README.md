@@ -118,7 +118,7 @@ Copy the `hermes-skill/` directory to `~/.hermes/skills/auto-captcha/` and set `
 | hCaptcha (enterprise) | iframe + DOM | 10-40s | High |
 | reCAPTCHA v2 | iframe + DOM | 60-120s+ | Medium (queue) |
 
-**Not supported:** reCAPTCHA v3, Cloudflare Turnstile, FunCAPTCHA
+**Coming soon:** reCAPTCHA v3, Cloudflare Turnstile, FunCAPTCHA — [track progress](../../issues)
 
 ## Pitfalls
 
