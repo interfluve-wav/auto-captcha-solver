@@ -22,6 +22,10 @@ TOKEN_ENDPOINTS = {
     "hcaptcha":    "/v1/token/hcaptcha",
     "recaptcha2":  "/v1/token/recaptcha2",
     "recaptcha3":  "/v1/token/recaptcha3",
+}
+
+# Experimental — NopeCHA queue extremely slow (5-10+ min), needs proxy
+EXPERIMENTAL_ENDPOINTS = {
     "turnstile":   "/v1/token/turnstile",
 }
 
@@ -57,11 +61,13 @@ class CaptchaSolver:
         poll_interval: float = 4.0,
         max_polls: int = 25,
         timeout_sec: float = 120.0,
+        proxy: dict = None,
     ):
         self.api_key = api_key
         self.poll_interval = poll_interval
         self.max_polls = max_polls
         self.timeout_sec = timeout_sec
+        self.proxy = proxy  # {"scheme": "http", "host": "1.2.3.4", "port": 8080, "username": "...", "password": "..."}
 
     # ── API Layer ────────────────────────────────────────────────
 
@@ -288,7 +294,7 @@ class CaptchaSolver:
         """
         start = time.time()
 
-        ep = TOKEN_ENDPOINTS.get(captcha_type)
+        ep = TOKEN_ENDPOINTS.get(captcha_type) or EXPERIMENTAL_ENDPOINTS.get(captcha_type)
         if not ep:
             return CaptchaResult(
                 success=False,
@@ -298,7 +304,11 @@ class CaptchaSolver:
             )
 
         # Submit job
-        status, data = self._api(ep, "POST", {"sitekey": sitekey, "url": url})
+        body = {"sitekey": sitekey, "url": url}
+        if self.proxy:
+            body["proxy"] = self.proxy
+
+        status, data = self._api(ep, "POST", body)
 
         if status != 200 or not data.get("data"):
             return CaptchaResult(
@@ -473,5 +483,10 @@ class CaptchaSolver:
 
     @staticmethod
     def supported_types() -> list:
-        """Return list of supported captcha types."""
+        """Return list of supported captcha types (stable)."""
         return list(TOKEN_ENDPOINTS.keys())
+
+    @staticmethod
+    def experimental_types() -> list:
+        """Return list of experimental captcha types (slow/unreliable)."""
+        return list(EXPERIMENTAL_ENDPOINTS.keys())
