@@ -1,0 +1,2 @@
+[console_scripts]
+auto-captcha = auto_captcha.cli:main
