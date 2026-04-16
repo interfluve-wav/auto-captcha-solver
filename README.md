@@ -1,7 +1,7 @@
 # auto-captcha
 
-[![PyPI version](https://img.shields.io/pypi/v/auto-captcha)](https://pypi.org/project/auto-captcha/)
-[![Python](https://img.shields.io/pypi/pyversions/auto-captcha)](https://pypi.org/project/auto-captcha/)
+[![PyPI version](https://img.shields.io/pypi/v/auto-captcha)](https://pypi.org/project/auto-captcha-solver/)
+[![Python](https://img.shields.io/pypi/pyversions/auto-captcha)](https://pypi.org/project/auto-captcha-solver/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![MCP Compatible](https://img.shields.io/badge/MCP-Compatible-blue)](#mcp-server)
 [![Hermes Skill](https://img.shields.io/badge/Hermes-Skill-gold)](#hermes-skill)
@@ -15,14 +15,14 @@ Your script → page loads → captcha detected → NopeCHA API → token inject
 ## Install
 
 ```bash
-pip install auto-captcha
+pip install auto-captcha-solver
 python -m playwright install chromium
 ```
 
 ## Quick Start
 
 ```python
-from auto_captcha import smart_page
+from auto_captcha_solver import smart_page
 
 with smart_page(api_key="your-key") as page:
     page.goto("https://protected-site.com")
@@ -35,7 +35,7 @@ with smart_page(api_key="your-key") as page:
 ### 1. `smart_page()` — Context Manager (easiest)
 
 ```python
-from auto_captcha import smart_page
+from auto_captcha_solver import smart_page
 
 with smart_page(api_key="your-key") as page:
     page.goto("https://example.com")
@@ -47,7 +47,7 @@ with smart_page(api_key="your-key") as page:
 ### 2. `SmartPage` — Wrap Existing Browser
 
 ```python
-from auto_captcha import SmartPage
+from auto_captcha_solver import SmartPage
 from playwright.sync_api import sync_playwright
 
 pw = sync_playwright().start()
@@ -61,7 +61,7 @@ page.fill("#input", "value")
 ### 3. `CaptchaSolver` — Full Control
 
 ```python
-from auto_captcha import CaptchaSolver
+from auto_captcha_solver import CaptchaSolver
 
 solver = CaptchaSolver(api_key="your-key")
 
@@ -74,9 +74,9 @@ results = solver.auto_solve(page)    # detect + solve + inject
 ## CLI
 
 ```bash
-auto-captcha credits --key YOUR_KEY           # Check NopeCHA balance
-auto-captcha detect --url https://example.com # Detect captchas
-auto-captcha solve --url https://example.com  # Solve captchas
+auto-captcha-solver credits --key YOUR_KEY           # Check NopeCHA balance
+auto-captcha-solver detect --url https://example.com # Detect captchas
+auto-captcha-solver solve --url https://example.com  # Solve captchas
 ```
 
 ## MCP Server
@@ -84,7 +84,7 @@ auto-captcha solve --url https://example.com  # Solve captchas
 Works with Claude Code, OpenClaw, Cursor, and any MCP-compatible agent.
 
 ```bash
-claude mcp add auto-captcha -- python -m auto_captcha.mcp_server
+claude mcp add auto-captcha -- python -m auto_captcha_solver.mcp_server
 ```
 
 Or in your MCP config:
@@ -94,7 +94,7 @@ Or in your MCP config:
   "mcpServers": {
     "auto-captcha": {
       "command": "python",
-      "args": ["-m", "auto_captcha.mcp_server"],
+      "args": ["-m", "auto_captcha_solver.mcp_server"],
       "env": {"NOPECHA_API_KEY": "your-key"}
     }
   }
@@ -108,19 +108,17 @@ Or in your MCP config:
 
 ## Hermes Skill
 
-Copy the `hermes-skill/` directory to `~/.hermes/skills/auto-captcha/` and set `NOPECHA_API_KEY` in your `.env`.
+Copy the `hermes-skill/` directory to `~/.hermes/skills/auto-captcha-solver/` and set `NOPECHA_API_KEY` in your `.env`.
 
 ## Supported Captcha Types
 
-| Type | API | Detection | Speed | Reliability |
-|------|-----|-----------|-------|-------------|
-| hCaptcha (checkbox) | Token | iframe + DOM | 10-40s | High |
-| hCaptcha (enterprise) | Token | iframe + DOM | 10-40s | High |
-| reCAPTCHA v2 | Token | iframe + DOM | 60-120s+ | Medium (queue) |
-| reCAPTCHA v3 | Token | script src | 60-120s+ | Medium (queue) |
-| Cloudflare Turnstile | Token | script + div | 5-15s | High |
+| Type | Detection | Speed | Reliability |
+|------|-----------|-------|-------------|
+| hCaptcha (checkbox) | iframe + DOM | 10-40s | High |
+| hCaptcha (enterprise) | iframe + DOM | 10-40s | High |
+| reCAPTCHA v2 | iframe + DOM | 60-120s+ | Medium (queue) |
 
-**Coming soon (Recognition API):** AWS WAF, FunCAPTCHA, GeeTest, Lemin, Text CAPTCHA — [track progress](../../issues)
+**Coming soon:** reCAPTCHA v3, Cloudflare Turnstile, FunCAPTCHA — [track progress](../../issues)
 
 ## Pitfalls
 
