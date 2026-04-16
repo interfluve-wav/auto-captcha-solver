@@ -1,12 +1,19 @@
 # Changelog
 
+## 0.1.3 (2026-04-16)
+
+- Move Turnstile to experimental (NopeCHA queue 5-10+ min, needs proxy)
+- Add `solver.experimental_types()` method
+- Add proxy support to CaptchaSolver constructor
+- Stable: hcaptcha, recaptcha2, recaptcha3
+- Experimental: turnstile
+
 ## 0.1.2 (2026-04-16)
 
 - Add: reCAPTCHA v3 Token API support
 - Add: Cloudflare Turnstile Token API support
-- Add: `solver.supported_types()` — returns ['hcaptcha', 'recaptcha2', 'recaptcha3', 'turnstile']
+- Add: `solver.supported_types()` method
 - Fix: detection no longer false-positives across captcha types
-- Fix: reCAPTCHA v3 detection requires `render=` param in script src
 
 ## 0.1.1 (2026-04-16)
 
@@ -15,13 +22,4 @@
 
 ## 0.1.0 (2026-04-16)
 
-Initial release.
-
-- CaptchaSolver core class — detect, solve, inject
-- SmartPage wrapper with transparent auto-solve
-- `smart_page()` context manager
-- CLI tool: `auto-captcha {solve,detect,credits}`
-- MCP server for AI agent integration
-- Hermes skill descriptor
-- Supports hCaptcha (checkbox + enterprise) and reCAPTCHA v2
-- NopeCHA API integration with polling and timeout
+Initial release — hCaptcha + reCAPTCHA v2, CLI, MCP server, Hermes skill.
