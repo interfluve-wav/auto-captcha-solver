@@ -1,0 +1,14 @@
+LICENSE
+README.md
+pyproject.toml
+src/auto_captcha_solver/__init__.py
+src/auto_captcha_solver/cli.py
+src/auto_captcha_solver/mcp_server.py
+src/auto_captcha_solver/solver.py
+src/auto_captcha_solver/wrapper.py
+src/auto_captcha_solver.egg-info/PKG-INFO
+src/auto_captcha_solver.egg-info/SOURCES.txt
+src/auto_captcha_solver.egg-info/dependency_links.txt
+src/auto_captcha_solver.egg-info/entry_points.txt
+src/auto_captcha_solver.egg-info/requires.txt
+src/auto_captcha_solver.egg-info/top_level.txt
