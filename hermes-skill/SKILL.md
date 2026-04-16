@@ -1,5 +1,5 @@
 ---
-name: auto-captcha
+name: auto-captcha-solver
 description: Universal captcha auto-solver for Playwright browser automation. Detects hCaptcha and reCAPTCHA v2 on any page, solves via NopeCHA API, and injects tokens automatically. Drop-in CaptchaSolver class with auto_solve(page) method.
 category: software-development
 ---
@@ -24,7 +24,7 @@ Auto-detect and solve captchas during Playwright browser automation using the No
 ## Quick Start
 
 ```python
-from auto_captcha import CaptchaSolver
+from auto_captcha_solver import CaptchaSolver
 
 solver = CaptchaSolver(api_key="your-key")
 
@@ -62,7 +62,7 @@ for r in results:
 ## SmartPage (transparent wrapper)
 
 ```python
-from auto_captcha import smart_page
+from auto_captcha_solver import smart_page
 
 with smart_page(api_key="your-key") as page:
     page.goto("https://protected-site.com")
@@ -103,7 +103,7 @@ with smart_page(api_key="your-key") as page:
 ## Installation
 
 ```bash
-pip install auto-captcha
+pip install auto-captcha-solver
 python -m playwright install chromium
 ```
 
@@ -112,11 +112,11 @@ python -m playwright install chromium
 Works with Claude Code, OpenClaw, and any MCP-compatible agent:
 
 ```bash
-claude mcp add auto-captcha -- python -m auto_captcha.mcp_server
+claude mcp add auto-captcha-solver -- python -m auto_captcha_solver.mcp_server
 ```
 
 ## File Location
 
 ```
-~/.hermes/skills/auto-captcha/
+~/.hermes/skills/auto-captcha-solver/
 ```
