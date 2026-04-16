@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "auto-captcha"
-version = "0.1.2"
+version = "0.1.3"
 description = "Universal captcha solver for Playwright automation — hCaptcha + reCAPTCHA v2 via NopeCHA API"
 readme = "README.md"
 license = {text = "MIT"}
