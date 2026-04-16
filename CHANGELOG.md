@@ -1,5 +1,7 @@
 # Changelog
 
+Renamed from `auto-captcha` to `auto-captcha-solver`.
+
 ## 0.1.3 (2026-04-16)
 
 - Move Turnstile to experimental (NopeCHA queue 5-10+ min, needs proxy)
