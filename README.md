@@ -112,13 +112,15 @@ Copy the `hermes-skill/` directory to `~/.hermes/skills/auto-captcha/` and set `
 
 ## Supported Captcha Types
 
-| Type | Detection | Speed | Reliability |
-|------|-----------|-------|-------------|
-| hCaptcha (checkbox) | iframe + DOM | 10-40s | High |
-| hCaptcha (enterprise) | iframe + DOM | 10-40s | High |
-| reCAPTCHA v2 | iframe + DOM | 60-120s+ | Medium (queue) |
+| Type | API | Detection | Speed | Reliability |
+|------|-----|-----------|-------|-------------|
+| hCaptcha (checkbox) | Token | iframe + DOM | 10-40s | High |
+| hCaptcha (enterprise) | Token | iframe + DOM | 10-40s | High |
+| reCAPTCHA v2 | Token | iframe + DOM | 60-120s+ | Medium (queue) |
+| reCAPTCHA v3 | Token | script src | 60-120s+ | Medium (queue) |
+| Cloudflare Turnstile | Token | script + div | 5-15s | High |
 
-**Coming soon:** reCAPTCHA v3, Cloudflare Turnstile, FunCAPTCHA — [track progress](../../issues)
+**Coming soon (Recognition API):** AWS WAF, FunCAPTCHA, GeeTest, Lemin, Text CAPTCHA — [track progress](../../issues)
 
 ## Pitfalls
 
