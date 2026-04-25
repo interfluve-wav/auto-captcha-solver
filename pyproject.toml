@@ -87,6 +87,13 @@ warn_redundant_casts = true
 warn_unused_ignores = true
 
 [tool.pytest.ini_options]
+addopts = "-v --tb=short"
+filterwarnings = [
+    "ignore:.*invalid escape sequence \.:DeprecationWarning",
+    "ignore:.*urllib3 v2 only supports OpenSSL.*:NotOpenSSLWarning",
+    "ignore::DeprecationWarning:.*",
+]
+
 testpaths = ["tests"]
 python_files = "test_*.py"
 addopts = "-v --tb=short"
