@@ -1,0 +1,58 @@
+name: Bug Report
+description: File a bug report
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for reporting a bug! Please fill out the sections below.
+
+  - type: input
+    id: version
+    attributes:
+      label: Package version
+      description: What version of auto-captcha are you running?
+      placeholder: "0.1.4"
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug description
+      description: What happened? What did you expect?
+      placeholder: |
+        Captcha fails to solve on reCAPTCHA v3 sites. Expected token but got error...
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction steps
+      description: How can we reproduce the issue?
+      placeholder: |
+        1. python script.py
+        2. Navigate to https://...
+        3. Observe...
+      render: bash
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs
+      description: Paste any error messages or debug output
+      render: bash
+
+  - type: textarea
+    id: env
+    attributes:
+      label: Environment
+      description: |
+        Python version, OS, Playwright version, etc.
+      render: yaml
+      value: |
+        OS: [e.g. macOS 15.3, Ubuntu 24.04]
+        Python: [e.g. 3.12.1]
+        auto-captcha: [e.g. 0.1.4]
+        Playwright: [e.g. 1.47.0]

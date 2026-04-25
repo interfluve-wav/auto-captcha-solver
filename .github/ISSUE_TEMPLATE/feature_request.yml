@@ -1,0 +1,40 @@
+name: Feature Request
+description: Suggest a new feature or improvement
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting an improvement! Please describe the feature.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem statement
+      description: What's the pain point or need?
+      placeholder: I'm frustrated when...
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: How would you like this to work?
+      placeholder: |
+        It would be great if auto-captcha could...
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Have you tried other approaches or workarounds?
+      placeholder: |
+        I currently work around this by...
+
+  - type: checkboxes
+    id: extra
+    attributes:
+      label: Extra information
+      description: Check any applicable
+      options:
+        - label: I'd like to help implement this
+          required: false

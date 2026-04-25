@@ -1,6 +1,11 @@
 LICENSE
 README.md
 pyproject.toml
+src/auto_captcha/__init__.py
+src/auto_captcha/cli.py
+src/auto_captcha/mcp_server.py
+src/auto_captcha/solver.py
+src/auto_captcha/wrapper.py
 src/auto_captcha_solver/__init__.py
 src/auto_captcha_solver/cli.py
 src/auto_captcha_solver/mcp_server.py

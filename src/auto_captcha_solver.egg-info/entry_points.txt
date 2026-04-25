@@ -1,2 +1,2 @@
 [console_scripts]
-auto-captcha-solver = auto_captcha_solver.cli:main
+auto-captcha = auto_captcha_solver.cli:main

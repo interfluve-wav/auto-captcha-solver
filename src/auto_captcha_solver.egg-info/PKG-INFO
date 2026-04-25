@@ -1,68 +1,116 @@
 Metadata-Version: 2.4
 Name: auto-captcha-solver
-Version: 0.1.3
-Summary: Universal captcha solver for Playwright automation — hCaptcha + reCAPTCHA v2 via NopeCHA API
-Author: Suhaas Chitturi
+Version: 0.1.4
+Summary: Universal captcha solver for Playwright automation — hCaptcha, reCAPTCHA v2/v3, and Cloudflare Turnstile via NopeCHA API
+Author-email: Suhaas Chitturi <sun@mail.com>
 License: MIT
 Project-URL: Homepage, https://github.com/interfluve-wav/auto-captcha-solver
 Project-URL: Repository, https://github.com/interfluve-wav/auto-captcha-solver
 Project-URL: Issues, https://github.com/interfluve-wav/auto-captcha-solver/issues
-Keywords: captcha,hcaptcha,recaptcha,playwright,automation,browser,solver
+Project-URL: Documentation, https://github.com/interfluve-wav/auto-captcha-solver#readme
+Project-URL: Changelog, https://github.com/interfluve-wav/auto-captcha-solver/blob/main/CHANGELOG.md
+Keywords: captcha,hcaptcha,recaptcha,turnstile,playwright,automation,browser,solver,mcp,nopecha
 Classifier: Development Status :: 4 - Beta
 Classifier: Intended Audience :: Developers
 Classifier: License :: OSI Approved :: MIT License
 Classifier: Programming Language :: Python :: 3
-Classifier: Programming Language :: Python :: 3.9
 Classifier: Programming Language :: Python :: 3.10
 Classifier: Programming Language :: Python :: 3.11
 Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
 Classifier: Topic :: Software Development :: Testing
 Classifier: Topic :: Internet :: WWW/HTTP
+Classifier: Topic :: Security :: Cryptography
 Requires-Python: >=3.9
 Description-Content-Type: text/markdown
 License-File: LICENSE
 Requires-Dist: requests>=2.28.0
+Requires-Dist: typing-extensions>=4.0.0; python_version < "3.11"
 Provides-Extra: playwright
 Requires-Dist: playwright>=1.30.0; extra == "playwright"
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0.0; extra == "dev"
+Requires-Dist: pytest-playwright>=0.4.0; extra == "dev"
+Requires-Dist: build>=1.0.0; extra == "dev"
+Requires-Dist: twine>=5.0.0; extra == "dev"
+Requires-Dist: ruff>=0.4.0; extra == "dev"
+Requires-Dist: mypy>=1.8.0; extra == "dev"
+Requires-Dist: types-requests>=2.31.0; extra == "dev"
 Provides-Extra: all
 Requires-Dist: playwright>=1.30.0; extra == "all"
 Dynamic: license-file
 
-# auto-captcha
+# auto-captcha — Universal Captcha Solver for Playwright
 
-[![PyPI version](https://img.shields.io/pypi/v/auto-captcha)](https://pypi.org/project/auto-captcha-solver/)
-[![Python](https://img.shields.io/pypi/pyversions/auto-captcha)](https://pypi.org/project/auto-captcha-solver/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![MCP Compatible](https://img.shields.io/badge/MCP-Compatible-blue)](#mcp-server)
-[![Hermes Skill](https://img.shields.io/badge/Hermes-Skill-gold)](#hermes-skill)
+![Python](https://img.shields.io/pypi/pyversions/auto-captcha)
+![PyPI version](https://img.shields.io/pypi/v/auto-captcha)
+![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
+![MCP Compatible](https://img.shields.io/badge/MCP-Compatible-blue)
+![Hermes Skill](https://img.shields.io/badge/Hermes-Skill-gold)
 
-Universal captcha solver for Playwright browser automation. Detects hCaptcha and reCAPTCHA v2, solves them via the NopeCHA API, and injects tokens — so your scripts never get stuck.
+Drop-in captcha bypass for Playwright browser automation. Detects hCaptcha, reCAPTCHA v2/v3, and Cloudflare Turnstile, solves them via the NopeCHA Token API, and injects tokens automatically — so your automation scripts never stall.
 
 ```
 Your script → page loads → captcha detected → NopeCHA API → token injected → continue
 ```
 
-## Install
+## Quick Start
 
 ```bash
-pip install auto-captcha-solver
+pip install auto-captcha
 python -m playwright install chromium
 ```
-
-## Quick Start
 
 ```python
 from auto_captcha_solver import smart_page
 
-with smart_page(api_key="your-key") as page:
+with smart_page(api_key="your-nopecha-key") as page:
     page.goto("https://protected-site.com")
     page.fill("#email", "user@example.com")
-    page.click("#submit")   # captcha auto-solved
+    page.click("#submit")  # captcha auto-solved → form submits
+```
+
+## Why This Exists
+
+Browser automation hits captcha walls. Existing solutions either require manual intervention or brittle image-to-text heuristics. **auto-captcha** uses a commercial token API (NopeCHA) that actually solves the challenge server-side — it's the same API powering many production captcha-bypass automation tools.
+
+**Features:**
+- **Automatic detection** — scans frames and DOM for hCaptcha, reCAPTCHA v2/v3, Turnstile
+- **Zero-config wrapper** — `smart_page()` context manager handles everything
+- **Fine-grained control** — `CaptchaSolver` class exposes detect/solve/inject separately
+- **MCP server included** — use from Claude Code, Cursor, or any MCP-compatible agent
+- **CLI tool** — solve or detect from the command line
+- **Playwright CLI compatibility** — works alongside `playwright-cli` workflows
+
+> **Note:** Requires a NopeCHA API key (free tier available). See https://nopecha.com
+
+## Installation
+
+### Core Package
+
+```bash
+pip install auto-captcha
+```
+
+### With Playwright (recommended)
+
+```bash
+pip install auto-captcha[playwright]
+python -m playwright install chromium
+```
+
+Or install separately:
+
+```bash
+pip install playwright
+python -m playwright install
 ```
 
 ## Three Ways to Use
 
 ### 1. `smart_page()` — Context Manager (easiest)
+
+Manages browser lifecycle and auto-solves on navigation/click events.
 
 ```python
 from auto_captcha_solver import smart_page
@@ -70,11 +118,17 @@ from auto_captcha_solver import smart_page
 with smart_page(api_key="your-key") as page:
     page.goto("https://example.com")
     page.fill("#email", "user@test.com")
-    page.click("#submit")
+    page.click("#submit")  # auto-solved
     print(page.captcha_log)  # [{'type': 'hcaptcha', 'status': 'solved'}]
 ```
 
-### 2. `SmartPage` — Wrap Existing Browser
+**Options:**
+- `headless=False` — see the browser
+- `wait_after_load=3.0` — delay before solving (site-dependent)
+
+### 2. `SmartPage` — Wrap an Existing Page
+
+Use when you already have a Playwright page/browser instance:
 
 ```python
 from auto_captcha_solver import SmartPage
@@ -82,89 +136,146 @@ from playwright.sync_api import sync_playwright
 
 pw = sync_playwright().start()
 browser = pw.chromium.launch(headless=True)
-page = SmartPage(browser.new_page(), api_key="your-key")
+raw_page = browser.new_page()
+page = SmartPage(raw_page, api_key="your-key")
 
-page.goto("https://example.com")
+page.goto("https://site.com")  # captchas auto-solved
 page.fill("#input", "value")
+page.click("#submit")
+browser.close()
+pw.stop()
 ```
 
 ### 3. `CaptchaSolver` — Full Control
+
+Detect, solve, and inject manually:
 
 ```python
 from auto_captcha_solver import CaptchaSolver
 
 solver = CaptchaSolver(api_key="your-key")
 
-captchas = solver.detect(page)       # [{'type': 'hcaptcha', 'sitekey': '...'}]
-result = solver.solve("hcaptcha", sitekey, url)   # CaptchaResult(success=True, token='...')
-solver.inject(page, "hcaptcha", result.token)
-results = solver.auto_solve(page)    # detect + solve + inject
+# Detect all captchas on the page
+captchas = solver.detect(page)
+# → [{'type': 'hcaptcha', 'sitekey': 'abc123', 'url': 'https://...'}]
+
+# Solve one
+result = solver.solve(captcha_type="hcaptcha", sitekey="abc123", url=page.url)
+if result.success:
+    # Inject into page
+    solver.inject(page, "hcaptcha", result.token)
 ```
 
-## CLI
+## CLI Usage
 
 ```bash
-auto-captcha-solver credits --key YOUR_KEY           # Check NopeCHA balance
-auto-captcha-solver detect --url https://example.com # Detect captchas
-auto-captcha-solver solve --url https://example.com  # Solve captchas
+# Check credits
+auto-captcha credits --key $NOPECHA_API_KEY
+
+# Detect only (don't solve)
+auto-captcha detect --url https://example.com
+
+# Auto-solve
+auto-captcha solve --url https://example.com --key $NOPECHA_API_KEY
 ```
+
+Results are JSON lines by default; use `--pretty` for formatted output.
 
 ## MCP Server
 
-Works with Claude Code, OpenClaw, Cursor, and any MCP-compatible agent.
+Exposes captcha solving as MCP tools for AI agents (Claude Code, Cursor, etc.):
 
 ```bash
-claude mcp add auto-captcha -- python -m auto_captcha_solver.mcp_server
+# Set env var
+export NOPECHA_API_KEY="your-key"
+
+# Run as MCP server
+python -m auto_captcha.mcp_server
 ```
 
-Or in your MCP config:
+Then register in your client config:
 
 ```json
 {
   "mcpServers": {
     "auto-captcha": {
       "command": "python",
-      "args": ["-m", "auto_captcha_solver.mcp_server"],
+      "args": ["-m", "auto_captcha.mcp_server"],
       "env": {"NOPECHA_API_KEY": "your-key"}
     }
   }
 }
 ```
 
-**Tools provided:**
-- `captcha_detect` — detect captchas on a URL
-- `captcha_solve` — detect and solve all captchas
-- `captcha_credits` — check NopeCHA credit balance
+**Available tools:**
+- `captcha_detect` — scan a URL for captchas
+- `captcha_solve` — detect and solve
+- `captcha_credits` — check API credit balance
 
-## Hermes Skill
+## Architecture
 
-Copy the `hermes-skill/` directory to `~/.hermes/skills/auto-captcha-solver/` and set `NOPECHA_API_KEY` in your `.env`.
+```
+┌──────────────────┐
+│  Your script     │
+│  (Playwright)    │
+└────────┬─────────┘
+         │ calls page.goto() / click()
+         ▼
+┌──────────────────┐
+│   SmartPage      │  ← Detects navigation/click events
+│   (wrapper)      │  → Waits → Calls detect() after each action
+└────────┬─────────┘
+         │
+         ▼
+┌──────────────────┐
+│  CaptchaSolver   │  ← DOM + frame inspection
+│  - detect()      │  → extracts sitekeys
+│  - solve()       │  → calls NopeCHA API
+│  - inject()      │  → posts token into page callbacks
+└────────┬─────────┘
+         │
+         ▼
+┌──────────────────┐
+│  NopeCHA API     │  ← Cloud solver (5–60s)
+│  token endpoint  │
+└──────────────────┘
+```
 
 ## Supported Captcha Types
 
-| Type | Detection | Speed | Reliability |
-|------|-----------|-------|-------------|
-| hCaptcha (checkbox) | iframe + DOM | 10-40s | High |
-| hCaptcha (enterprise) | iframe + DOM | 10-40s | High |
-| reCAPTCHA v2 | iframe + DOM | 60-120s+ | Medium (queue) |
+| Type | Status | Notes |
+|------|--------|-------|
+| hCaptcha | ✅ Stable | checkbox + invisible |
+| reCAPTCHA v2 | ✅ Stable | checkbox |
+| reCAPTCHA v3 | ✅ Stable | score-based, invisible |
+| Cloudflare Turnstile | ⚠️ Experimental | NopeCHA queue may be slow |
 
-**Coming soon:** reCAPTCHA v3, Cloudflare Turnstile, FunCAPTCHA — [track progress](../../issues)
+Experimental types work through NopeCHA's queue system (5–10 minute wait, requires proxy in production).
 
-## Pitfalls
+## Performance
 
-- **reCAPTCHA queues are slow** — can take 60-120+ seconds during peak
-- **Each solve costs 1 credit** — check with `solver.get_credits()`
-- **Headless detection** — some sites block headless; use `headless=False`
-- **Lazy-loaded captchas** — add `time.sleep()` after actions that might trigger them
+- **Detection**: < 100ms (DOM scan)
+- **Solving time**: 5–60 seconds (API-dependent)
+- **API credits**: ~1–5 credits per solve (varies by captcha type & NopeCHA plan)
 
-## Get an API Key
+## Configuration
 
-Get free credits at [nopecha.com](https://nopecha.com). Set as environment variable:
+`CaptchaSolver` constructor arguments:
 
-```bash
-export NOPECHA_API_KEY="your-key"
-```
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `api_key` | **required** | NopeCHA API key |
+| `poll_interval` | `4.0` | Seconds between solve status polls |
+| `max_polls` | `25` | Maximum polling attempts |
+| `timeout_sec` | `120.0` | Overall timeout before giving up |
+| `proxy` | `None` | Optional proxy dict for NopeCHA requests |
 
 ## License
 
-MIT
+MIT — see [LICENSE](LICENSE) for details.
+
+## Credits
+
+- Built by [Suhaas Chitturi](https://github.com/interfluve-wav)
+- API powered by [NopeCHA](https://nopecha.com)
+- Diagram assets: Mermaid / Excalidraw
