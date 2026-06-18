@@ -1,7 +1,7 @@
 """MCP server protocol tests."""
 
 from auto_captcha_solver.mcp_server import create_server, handle_tool_call
-from auto_captcha_solver.solver import sanitize_detect_results
+from auto_captcha_solver.types import sanitize_detect_results
 
 
 def test_mcp_server_metadata():
@@ -25,6 +25,7 @@ def test_mcp_tool_schemas():
 def test_mcp_handle_credits(monkeypatch):
     """captcha_credits tool should return a credits dict (no API hit if key missing)."""
     monkeypatch.delenv("NOPECHA_API_KEY", raising=False)
+    monkeypatch.delenv("CAPTCHAAI_API_KEY", raising=False)
     result = handle_tool_call("captcha_credits", {})
     assert "error" in result
 

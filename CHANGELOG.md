@@ -7,20 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.5] - 2026-06-18
+
 ### Added
-- MCP server — use from Claude Code, Cursor, and other MCP-compatible agents
-- `captcha_credits` CLI subcommand — check NopeCHA balance without solving
-- Type hints on all public functions and classes
+- **CaptchaAI provider** — 2Captcha-compatible `in.php`/`res.php` backend for reCAPTCHA v2/v3 and Turnstile
+- `provider` parameter on `CaptchaSolver`, `SmartPage`, and `smart_page()` (`nopecha` | `captchaai`)
+- CLI `--provider` flag and `CAPTCHA_PROVIDER` / `CAPTCHAAI_API_KEY` environment variables
+- MCP server reads `CAPTCHA_PROVIDER` and provider-specific API keys
 
 ### Changed
-- Refactored detection logic for cleaner frame vs DOM fallback paths
-- Standardized JSON output format in CLI (`--pretty` for formatted)
-- Improved error messages for unsupported captcha types
-
-### Fixed
-- reCAPTCHA v3 detection edge-cases where v2 was incorrectly reported
-- Turnstile sitekey extraction from script URLs
-- `SmartPage.submit()` now works with non-form selector parameter
+- Refactored NopeCHA integration into pluggable `providers/` package
 
 ## [0.1.4] - 2026-04-25
 

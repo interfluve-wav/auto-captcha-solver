@@ -40,9 +40,10 @@ class SmartPage:
         api_key: str,
         wait_after_load: float = 3.0,
         proxy: dict[str, Any] | None = None,
+        provider: str = "nopecha",
     ):
         self._page = page
-        self._solver = CaptchaSolver(api_key, proxy=proxy)
+        self._solver = CaptchaSolver(api_key, provider=provider, proxy=proxy)
         self._wait = wait_after_load
         self._log: list[CaptchaLogEntry] = []
 
@@ -134,6 +135,7 @@ def smart_page(
     api_key: str,
     headless: bool = True,
     proxy: dict[str, Any] | None = None,
+    provider: str = "nopecha",
     **launch_kwargs: Any,
 ) -> _SmartPageContext:
     """
@@ -151,7 +153,11 @@ def smart_page(
     use ``smart_page(api_key="...", proxy=nopecha_proxy, **{"proxy": browser_proxy})``.
     """
     return _SmartPageContext(
-        api_key=api_key, headless=headless, proxy=proxy, launch_kwargs=launch_kwargs
+        api_key=api_key,
+        headless=headless,
+        proxy=proxy,
+        provider=provider,
+        launch_kwargs=launch_kwargs,
     )
 
 
@@ -161,11 +167,13 @@ class _SmartPageContext:
         api_key: str,
         headless: bool,
         proxy: dict[str, Any] | None,
+        provider: str,
         launch_kwargs: dict[str, Any],
     ):
         self._api_key = api_key
         self._headless = headless
         self._proxy = proxy
+        self._provider = provider
         self._launch_kwargs = launch_kwargs
         self._pw: Any = None
         self._browser: Any = None
@@ -177,7 +185,9 @@ class _SmartPageContext:
         self._pw = sync_playwright().start()
         self._browser = self._pw.chromium.launch(headless=self._headless, **self._launch_kwargs)
         raw_page = self._browser.new_page()
-        self.page = SmartPage(raw_page, api_key=self._api_key, proxy=self._proxy)
+        self.page = SmartPage(
+            raw_page, api_key=self._api_key, proxy=self._proxy, provider=self._provider
+        )
         return self.page
 
     def __exit__(self, *args: Any) -> None:

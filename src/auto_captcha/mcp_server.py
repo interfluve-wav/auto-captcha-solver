@@ -31,7 +31,27 @@ from typing import Any
 
 # MCP server using stdio transport
 # Implements the MCP protocol for tool discovery and execution
-from auto_captcha.solver import sanitize_detect_results
+from auto_captcha.providers import resolve_api_key
+from auto_captcha.types import sanitize_detect_results
+
+
+def _build_solver(arguments: dict[str, Any]) -> tuple[Any | None, dict[str, Any] | None]:
+    from auto_captcha import CaptchaSolver
+
+    provider = os.environ.get("CAPTCHA_PROVIDER", "nopecha")
+    api_key = resolve_api_key(provider)
+    if not api_key:
+        return None, {
+            "error": (
+                f"API key not set for provider '{provider}'. "
+                "Set NOPECHA_API_KEY or CAPTCHAAI_API_KEY."
+            )
+        }
+    timeout = arguments.get("timeout")
+    solver = CaptchaSolver(api_key=api_key, provider=provider)
+    if timeout is not None:
+        solver.timeout_sec = float(timeout)
+    return solver, None
 
 
 def create_server() -> dict[str, Any]:
@@ -85,7 +105,7 @@ def create_server() -> dict[str, Any]:
             },
             {
                 "name": "captcha_credits",
-                "description": "Check remaining NopeCHA API credits.",
+                "description": "Check remaining API credits for the configured provider.",
                 "inputSchema": {
                     "type": "object",
                     "properties": {},
@@ -97,16 +117,16 @@ def create_server() -> dict[str, Any]:
 
 def handle_tool_call(tool_name: str, arguments: dict[str, Any]) -> dict[str, Any]:
     """Execute a tool and return the result."""
-    api_key = os.environ.get("NOPECHA_API_KEY", "")
-    if not api_key:
-        return {"error": "NOPECHA_API_KEY environment variable not set"}
-
     from auto_captcha import CaptchaSolver
 
-    solver = CaptchaSolver(api_key=api_key)
+    solver, err = _build_solver(arguments)
+    if err is not None:
+        return err
+    if not isinstance(solver, CaptchaSolver):
+        return {"error": "solver initialization failed"}
 
     if tool_name == "captcha_credits":
-        return {"credits": solver.get_credits()}
+        return {"provider": solver.provider, "credits": solver.get_credits()}
 
     if tool_name == "captcha_detect":
         url = arguments["url"]

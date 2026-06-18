@@ -1,11 +1,8 @@
 """Unit tests for the core solver logic."""
 
-from auto_captcha_solver.solver import (
-    EXPERIMENTAL_ENDPOINTS,
-    TOKEN_ENDPOINTS,
-    CaptchaSolver,
-    sanitize_detect_results,
-)
+from auto_captcha_solver.providers.nopecha import EXPERIMENTAL_ENDPOINTS, TOKEN_ENDPOINTS
+from auto_captcha_solver.solver import CaptchaSolver
+from auto_captcha_solver.types import sanitize_detect_results
 
 # ── Module-level imports ──────────────────────────────────────────────
 
@@ -13,12 +10,14 @@ from auto_captcha_solver.solver import (
 def test_version():
     from auto_captcha_solver import __version__
 
-    assert __version__ == "0.1.4"
+    assert __version__ == "0.1.5"
 
 
 def test_supported_types():
-    assert CaptchaSolver.supported_types() == ["hcaptcha", "recaptcha2", "recaptcha3"]
-    assert CaptchaSolver.experimental_types() == ["turnstile"]
+    solver = CaptchaSolver(api_key="k")
+    assert solver.supported_types() == ["hcaptcha", "recaptcha2", "recaptcha3"]
+    assert solver.experimental_types() == ["turnstile"]
+    assert CaptchaSolver.default_supported_types() == ["hcaptcha", "recaptcha2", "recaptcha3"]
 
 
 def test_solver_initialization(solver):
@@ -91,7 +90,7 @@ def test_get_credits_success(monkeypatch, solver):
     def mock_request(*args, **kwargs):
         return DummyResponse(200, {"credit": 999})
 
-    monkeypatch.setattr("requests.request", mock_request)
+    monkeypatch.setattr("auto_captcha_solver.providers.nopecha.requests.request", mock_request)
     credits = solver.get_credits()
     assert credits == 999
 
@@ -100,7 +99,7 @@ def test_get_credits_failure(monkeypatch, solver):
     def mock_request(*args, **kwargs):
         return DummyResponse(500, {})
 
-    monkeypatch.setattr("requests.request", mock_request)
+    monkeypatch.setattr("auto_captcha_solver.providers.nopecha.requests.request", mock_request)
     credits = solver.get_credits()
     assert credits == 0
 
