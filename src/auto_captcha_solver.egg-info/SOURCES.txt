@@ -17,3 +17,6 @@ src/auto_captcha_solver.egg-info/dependency_links.txt
 src/auto_captcha_solver.egg-info/entry_points.txt
 src/auto_captcha_solver.egg-info/requires.txt
 src/auto_captcha_solver.egg-info/top_level.txt
+tests/test_cli.py
+tests/test_mcp.py
+tests/test_solver.py

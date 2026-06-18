@@ -1,9 +1,7 @@
 """MCP server protocol tests."""
 
-import sys
-import json
-from io import StringIO
 from auto_captcha_solver.mcp_server import create_server, handle_tool_call
+
 
 def test_mcp_server_metadata():
     server = create_server()

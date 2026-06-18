@@ -1,8 +1,6 @@
 """Unit tests for the core solver logic."""
 
-import pytest
-from auto_captcha_solver.solver import CaptchaSolver, CaptchaResult, TOKEN_ENDPOINTS, EXPERIMENTAL_ENDPOINTS
-from auto_captcha_solver import CaptchaSolver as ImportedSolver
+from auto_captcha_solver.solver import EXPERIMENTAL_ENDPOINTS, TOKEN_ENDPOINTS, CaptchaSolver
 
 # ── Module-level imports ──────────────────────────────────────────────
 

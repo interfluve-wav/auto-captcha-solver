@@ -1,7 +1,9 @@
 """pytest configuration and shared fixtures."""
 
 import pytest
-from auto_captcha_solver import CaptchaSolver, CaptchaResult
+
+from auto_captcha_solver import CaptchaResult, CaptchaSolver
+
 
 # Skip integration tests that hit real API unless explicitly requested
 def pytest_addoption(parser):

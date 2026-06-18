@@ -107,8 +107,9 @@ def handle_tool_call(tool_name: str, arguments: dict) -> dict:
         url = arguments["url"]
         headless = arguments.get("headless", True)
 
-        from playwright.sync_api import sync_playwright
         import time
+
+        from playwright.sync_api import sync_playwright
 
         with sync_playwright() as p:
             browser = p.chromium.launch(headless=headless, args=["--no-sandbox"])
@@ -124,8 +125,9 @@ def handle_tool_call(tool_name: str, arguments: dict) -> dict:
         url = arguments["url"]
         headless = arguments.get("headless", True)
 
-        from playwright.sync_api import sync_playwright
         import time
+
+        from playwright.sync_api import sync_playwright
 
         with sync_playwright() as p:
             browser = p.chromium.launch(headless=headless, args=["--no-sandbox"])
@@ -152,7 +154,6 @@ def handle_tool_call(tool_name: str, arguments: dict) -> dict:
 
 def run_stdio_server():
     """Run as a stdio MCP server."""
-    import json
 
     server_info = create_server()
 

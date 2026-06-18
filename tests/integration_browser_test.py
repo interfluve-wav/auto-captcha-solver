@@ -1,8 +1,10 @@
-import sys
 import json
+import sys
+
 sys.path.insert(0, "/Users/suhaas/Documents/GitHub/auto-captcha-solver/src")
 
 from playwright.sync_api import sync_playwright
+
 from auto_captcha_solver import CaptchaSolver
 
 # Use a dummy key (won't solve, but detection should still work)

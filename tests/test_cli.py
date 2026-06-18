@@ -2,7 +2,6 @@
 
 import subprocess
 import sys
-import json
 
 PYTHON = sys.executable
 

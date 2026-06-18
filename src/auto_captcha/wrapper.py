@@ -11,6 +11,7 @@ Usage:
 """
 
 import time
+
 from .solver import CaptchaSolver
 
 
@@ -32,7 +33,7 @@ class SmartPage:
         self._page = page
         self._solver = CaptchaSolver(api_key)
         self._wait = wait_after_load
-        self._log = []
+        self._log: list[dict[str, str]] = []
 
     def _solve_if_present(self):
         captchas = self._solver.detect(self._page)

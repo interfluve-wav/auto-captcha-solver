@@ -10,12 +10,14 @@ Usage:
     results = solver.auto_solve(page)
 """
 
-import requests
 import re
 import time
 from dataclasses import dataclass
-from typing import Optional
+from typing import Any, cast
 
+import requests
+
+CaptchaInfo = dict[str, Any]
 
 # NopeCHA Token API endpoints
 TOKEN_ENDPOINTS = {
@@ -61,7 +63,7 @@ class CaptchaSolver:
         poll_interval: float = 4.0,
         max_polls: int = 25,
         timeout_sec: float = 120.0,
-        proxy: dict = None,
+        proxy: dict[str, Any] | None = None,
     ):
         self.api_key = api_key
         self.poll_interval = poll_interval
@@ -71,7 +73,9 @@ class CaptchaSolver:
 
     # ── API Layer ────────────────────────────────────────────────
 
-    def _api(self, path: str, method: str = "GET", body: dict = None):
+    def _api(
+        self, path: str, method: str = "GET", body: dict[str, Any] | None = None
+    ) -> tuple[int, dict[str, Any]]:
         headers = {
             "Content-Type": "application/json",
             "Authorization": f"Basic {self.api_key}",
@@ -92,12 +96,12 @@ class CaptchaSolver:
         """Check remaining NopeCHA credits."""
         status, data = self._api("/v1/status")
         if status == 200:
-            return data.get("credit", 0)
+            return int(data.get("credit", 0))
         return 0
 
     # ── Detection ────────────────────────────────────────────────
 
-    def detect(self, page) -> list:
+    def detect(self, page: Any) -> list:
         """
         Scan a Playwright page for captcha challenges.
 
@@ -210,7 +214,7 @@ class CaptchaSolver:
 
         return found
 
-    def _extract_sitekey(self, url: str) -> Optional[str]:
+    def _extract_sitekey(self, url: str) -> str | None:
         """Extract sitekey from iframe URL query params or fragment."""
         # reCAPTCHA style: ?k=<sitekey>
         match = re.search(r"[?&#]k=([A-Za-z0-9_-]+)", url)
@@ -220,11 +224,13 @@ class CaptchaSolver:
         match = re.search(r"[?&#]sitekey=([A-Za-z0-9_-]+)", url)
         return match.group(1) if match else None
 
-    def _extract_dom_sitekey(self, page, captcha_type: str) -> Optional[str]:
+    def _extract_dom_sitekey(self, page: Any, captcha_type: str) -> str | None:
         """Extract sitekey from page DOM."""
         try:
             if captcha_type == "hcaptcha":
-                return page.evaluate('''() => {
+                return cast(
+                    str | None,
+                    page.evaluate('''() => {
                     // data-sitekey on any element
                     let el = document.querySelector('[data-sitekey]');
                     if (el) return el.getAttribute('data-sitekey');
@@ -234,9 +240,12 @@ class CaptchaSolver:
                         if (m) return m[1];
                     }
                     return null;
-                }''')
+                }'''),
+                )
             elif captcha_type == "recaptcha":
-                return page.evaluate('''() => {
+                return cast(
+                    str | None,
+                    page.evaluate('''() => {
                     let el = document.querySelector('.g-recaptcha, [data-sitekey]');
                     if (el) return el.getAttribute('data-sitekey');
                     for (const f of document.querySelectorAll('iframe')) {
@@ -244,9 +253,12 @@ class CaptchaSolver:
                         if (m) return m[1];
                     }
                     return null;
-                }''')
+                }'''),
+                )
             elif captcha_type == "recaptcha3":
-                return page.evaluate('''() => {
+                return cast(
+                    str | None,
+                    page.evaluate(r'''() => {
                     // reCAPTCHA v3 is loaded via grecaptcha.enterprise.execute or grecaptcha.execute
                     const scripts = document.querySelectorAll('script[src*="recaptcha"]');
                     for (const s of scripts) {
@@ -259,9 +271,12 @@ class CaptchaSolver:
                         if (m) return m[1];
                     }
                     return null;
-                }''')
+                }'''),
+                )
             elif captcha_type == "turnstile":
-                return page.evaluate('''() => {
+                return cast(
+                    str | None,
+                    page.evaluate('''() => {
                     let el = document.querySelector('[data-sitekey]');
                     if (el) {
                         const parent = el.closest('.cf-turnstile') || el;
@@ -273,7 +288,8 @@ class CaptchaSolver:
                         if (m) return m[1];
                     }
                     return null;
-                }''')
+                }'''),
+                )
         except Exception:
             pass
         return None
@@ -304,7 +320,7 @@ class CaptchaSolver:
             )
 
         # Submit job
-        body = {"sitekey": sitekey, "url": url}
+        body: dict[str, Any] = {"sitekey": sitekey, "url": url}
         if self.proxy:
             body["proxy"] = self.proxy
 
@@ -362,7 +378,7 @@ class CaptchaSolver:
 
     # ── Injection ────────────────────────────────────────────────
 
-    def inject(self, page, captcha_type: str, token: str) -> bool:
+    def inject(self, page: Any, captcha_type: str, token: str) -> bool:
         """Inject solved token into the page's captcha callback."""
         try:
             if captcha_type == "hcaptcha":
@@ -435,7 +451,7 @@ class CaptchaSolver:
 
     # ── Auto Flow ────────────────────────────────────────────────
 
-    def auto_solve(self, page, click_checkbox: bool = True) -> list:
+    def auto_solve(self, page: Any, click_checkbox: bool = True) -> list[CaptchaResult]:
         """
         Detect → Solve → Inject all captchas on the page.
 
@@ -462,7 +478,7 @@ class CaptchaSolver:
 
         return results
 
-    def _click_checkbox(self, cap: dict):
+    def _click_checkbox(self, cap: dict) -> None:
         try:
             frame = cap["frame"]
             if cap["type"] == "hcaptcha":
@@ -482,11 +498,11 @@ class CaptchaSolver:
     # ── Info ──────────────────────────────────────────────────────
 
     @staticmethod
-    def supported_types() -> list:
+    def supported_types() -> list[str]:
         """Return list of supported captcha types (stable)."""
         return list(TOKEN_ENDPOINTS.keys())
 
     @staticmethod
-    def experimental_types() -> list:
+    def experimental_types() -> list[str]:
         """Return list of experimental captcha types (slow/unreliable)."""
         return list(EXPERIMENTAL_ENDPOINTS.keys())
