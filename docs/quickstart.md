@@ -82,3 +82,4 @@ page.fill("#input") →    Works normally
 | Solve times out | reCAPTCHA queues can take 60-120s, try again later |
 | Credits depleted | Check with `solver.get_credits()`, buy more at nopecha.com |
 | Headless detected | Use `smart_page(api_key="...", headless=False)` |
+| Solved once, blocked again | Use a sticky residential proxy for both Playwright and `CaptchaSolver(proxy=...)` — see [Production: Proxies & Sticky Sessions](../README.md#production-proxies--sticky-sessions) |

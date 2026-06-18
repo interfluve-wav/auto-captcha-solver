@@ -171,7 +171,7 @@ with sync_playwright() as pw:
 - Reuse cookies/storage for the lifetime of that session; discard the context when you rotate IPs.
 - For Cloudflare-heavy targets (e.g. SERP crawling), residential sticky proxies noticeably reduce repeat challenges compared to captcha solving alone.
 
-> Residential providers with session pinning (e.g. Novada) work well with this pattern. Any provider that supports sticky sessions and HTTP proxy auth is fine — the key is keeping browser and solver traffic on the same IP.
+> Residential providers with session pinning work well with this pattern. For example, [Novada](https://developer.novada.com/novada/proxies/rotating-residential-proxy/session-type) pins an IP by appending `session-{id}` to the proxy username (e.g. `USERNAME-zone-res-session-job42:PASSWORD` on `super.novada.pro:7777`). Any provider that supports sticky sessions and HTTP proxy auth is fine — the key is keeping browser and solver traffic on the same IP.
 
 ## Get an API Key
 
