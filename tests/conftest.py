@@ -1,7 +1,9 @@
 """pytest configuration and shared fixtures."""
 
 import pytest
-from auto_captcha_solver import CaptchaSolver, CaptchaResult
+
+from auto_captcha_solver import CaptchaResult, CaptchaSolver
+
 
 # Skip integration tests that hit real API unless explicitly requested
 def pytest_addoption(parser):
@@ -12,10 +14,12 @@ def pytest_addoption(parser):
         help="Run integration tests that call NopeCHA API (requires NOPECHA_API_KEY)",
     )
 
+
 @pytest.fixture
 def solver():
     """Return a CaptchaSolver with a dummy API key."""
     return CaptchaSolver(api_key="test-key-for-unit-tests")
+
 
 @pytest.fixture
 def sample_captcha_result():

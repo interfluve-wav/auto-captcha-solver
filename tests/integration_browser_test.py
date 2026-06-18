@@ -1,12 +1,12 @@
-import sys
 import json
-sys.path.insert(0, "/Users/suhaas/Documents/GitHub/auto-captcha-solver/src")
 
 from playwright.sync_api import sync_playwright
+
 from auto_captcha_solver import CaptchaSolver
 
 # Use a dummy key (won't solve, but detection should still work)
 solver = CaptchaSolver(api_key="test-key")
+
 
 def test_detection_on_real_page():
     with sync_playwright() as pw:
@@ -28,6 +28,7 @@ def test_detection_on_real_page():
 
         browser.close()
         print("✓ Browser detection test PASSED")
+
 
 if __name__ == "__main__":
     test_detection_on_real_page()

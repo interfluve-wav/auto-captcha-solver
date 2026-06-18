@@ -216,6 +216,52 @@ Experimental types work through NopeCHA's queue system (5–10 minute wait, requ
 - **Solving time**: 5–60 seconds (API-dependent)
 - **API credits**: ~1–5 credits per solve (varies by captcha type & NopeCHA plan)
 
+## Production: Proxies & Sticky Sessions
+
+Solving captchas is only one part of stable long-term scraping. Modern sites cross-validate **IP identity**, **persistent cookies**, and **request behavior** as a single risk signal. Even when every challenge is solved successfully, an unstable request pipeline will keep triggering anti-bot restrictions.
+
+For crawlers that run for hours or days, pair this library with **residential proxies that support sticky sessions**:
+
+- **Rotate between sessions** — assign each browser context or worker its own proxy endpoint so traffic is spread across IPs.
+- **Keep the same IP within a session** — after a captcha is solved, all follow-up requests (navigation, XHR, cookies) must leave from the same IP that earned the token.
+- **Match proxy on both sides** — configure the same sticky proxy for Playwright *and* for the NopeCHA solve request so the token and subsequent page loads share one identity.
+
+```python
+from playwright.sync_api import sync_playwright
+from auto_captcha_solver import CaptchaSolver
+
+# Same sticky residential proxy for browser traffic and token API
+proxy = {
+    "scheme": "http",
+    "host": "gate.provider.com",
+    "port": 7777,
+    "username": "user-session-abc123",  # session id pins the IP
+    "password": "secret",
+}
+
+playwright_proxy = {
+    "server": f"http://{proxy['host']}:{proxy['port']}",
+    "username": proxy["username"],
+    "password": proxy["password"],
+}
+
+solver = CaptchaSolver(api_key="your-key", proxy=proxy)
+
+with sync_playwright() as pw:
+    browser = pw.chromium.launch(headless=False, proxy=playwright_proxy)
+    page = browser.new_page()
+    page.goto("https://cloudflare-heavy-site.com")
+    solver.auto_solve(page)  # token solved from the same IP as the browser
+```
+
+**Practical tips:**
+
+- One sticky session per browser context — do not rotate mid-crawl after a solve.
+- Reuse cookies/storage for the lifetime of that session; discard the context when you rotate IPs.
+- For Cloudflare-heavy targets (e.g. SERP crawling), residential sticky proxies noticeably reduce repeat challenges compared to captcha solving alone.
+
+> Residential providers with session pinning work well with this pattern. For example, [Novada](https://developer.novada.com/novada/proxies/rotating-residential-proxy/session-type) pins an IP by appending `session-{id}` to the proxy username (e.g. `USERNAME-zone-res-session-job42:PASSWORD` on `super.novada.pro:7777`). Any provider that supports sticky sessions and HTTP proxy auth is fine — the key is keeping browser and solver traffic on the same IP.
+
 ## Configuration
 
 `CaptchaSolver` constructor arguments:

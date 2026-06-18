@@ -15,7 +15,7 @@ import sys
 import time
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(
         prog="auto-captcha",
         description="Universal captcha solver for Playwright automation",
@@ -25,7 +25,9 @@ def main():
     # -- solve --
     solve_p = sub.add_parser("solve", help="Solve captchas on a URL")
     solve_p.add_argument("--url", required=True, help="Page URL with captcha")
-    solve_p.add_argument("--key", default=os.environ.get("NOPECHA_API_KEY", ""), help="NopeCHA API key")
+    solve_p.add_argument(
+        "--key", default=os.environ.get("NOPECHA_API_KEY", ""), help="NopeCHA API key"
+    )
     solve_p.add_argument("--headless", action="store_true", default=True)
     solve_p.add_argument("--no-headless", action="store_false", dest="headless")
     solve_p.add_argument("--timeout", type=float, default=120, help="Solve timeout in seconds")
@@ -33,12 +35,16 @@ def main():
     # -- detect --
     detect_p = sub.add_parser("detect", help="Detect captchas without solving")
     detect_p.add_argument("--url", required=True, help="Page URL")
-    detect_p.add_argument("--key", default=os.environ.get("NOPECHA_API_KEY", ""), help="NopeCHA API key")
+    detect_p.add_argument(
+        "--key", default=os.environ.get("NOPECHA_API_KEY", ""), help="NopeCHA API key"
+    )
     detect_p.add_argument("--headless", action="store_true", default=True)
 
     # -- credits --
     credits_p = sub.add_parser("credits", help="Check NopeCHA credit balance")
-    credits_p.add_argument("--key", default=os.environ.get("NOPECHA_API_KEY", ""), help="NopeCHA API key")
+    credits_p.add_argument(
+        "--key", default=os.environ.get("NOPECHA_API_KEY", ""), help="NopeCHA API key"
+    )
 
     args = parser.parse_args()
 
@@ -51,6 +57,7 @@ def main():
         sys.exit(1)
 
     from auto_captcha import CaptchaSolver
+    from auto_captcha.solver import sanitize_detect_results
 
     solver = CaptchaSolver(api_key=args.key)
 
@@ -60,17 +67,19 @@ def main():
 
     elif args.command == "detect":
         from playwright.sync_api import sync_playwright
+
         with sync_playwright() as p:
             browser = p.chromium.launch(headless=args.headless, args=["--no-sandbox"])
             page = browser.new_page()
             page.goto(args.url, timeout=30000)
             time.sleep(3)
-            captchas = solver.detect(page)
+            captchas = sanitize_detect_results(solver.detect(page))
             browser.close()
         print(json.dumps(captchas, indent=2, default=str))
 
     elif args.command == "solve":
         from playwright.sync_api import sync_playwright
+
         with sync_playwright() as p:
             browser = p.chromium.launch(headless=args.headless, args=["--no-sandbox"])
             page = browser.new_page()
@@ -81,14 +90,16 @@ def main():
 
         output = []
         for r in results:
-            output.append({
-                "type": r.captcha_type,
-                "success": r.success,
-                "token": r.token[:50] + "..." if len(r.token) > 50 else r.token,
-                "error": r.error,
-                "attempts": r.attempts,
-                "elapsed_sec": r.elapsed_sec,
-            })
+            output.append(
+                {
+                    "type": r.captcha_type,
+                    "success": r.success,
+                    "token": r.token[:50] + "..." if len(r.token) > 50 else r.token,
+                    "error": r.error,
+                    "attempts": r.attempts,
+                    "elapsed_sec": r.elapsed_sec,
+                }
+            )
         print(json.dumps(output, indent=2))
 
 

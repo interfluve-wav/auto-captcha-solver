@@ -1,9 +1,8 @@
 """MCP server protocol tests."""
 
-import sys
-import json
-from io import StringIO
 from auto_captcha_solver.mcp_server import create_server, handle_tool_call
+from auto_captcha_solver.solver import sanitize_detect_results
+
 
 def test_mcp_server_metadata():
     server = create_server()
@@ -15,28 +14,32 @@ def test_mcp_server_metadata():
     assert "captcha_solve" in tool_names
     assert "captcha_credits" in tool_names
 
+
 def test_mcp_tool_schemas():
     server = create_server()
     detect = next(t for t in server["tools"] if t["name"] == "captcha_detect")
     assert detect["inputSchema"]["required"] == ["url"]
     assert "headless" in detect["inputSchema"]["properties"]
 
+
 def test_mcp_handle_credits(monkeypatch):
     """captcha_credits tool should return a credits dict (no API hit if key missing)."""
-    # Without NOPECHA_API_KEY, returns error
+    monkeypatch.delenv("NOPECHA_API_KEY", raising=False)
     result = handle_tool_call("captcha_credits", {})
     assert "error" in result
+
 
 def test_mcp_handle_unknown_tool(monkeypatch):
     """Unknown tool should return error message (after API key validation)."""
     monkeypatch.setenv("NOPECHA_API_KEY", "fake-key")
     result = handle_tool_call("nonexistent_tool_xyz", {})
-    assert "Unknown tool" in result.get("error", "")
-
-    """Unknown tool should return error message."""
-    result = handle_tool_call("nonexistent_tool_xyz", {})
-    assert "Unknown tool" in result.get("error", "")
-
-    result = handle_tool_call("unknown_tool", {})
     assert "error" in result
     assert "Unknown tool" in result["error"]
+
+
+def test_sanitize_detect_results_strips_frame():
+    captchas = [
+        {"type": "hcaptcha", "sitekey": "abc", "url": "https://example.com", "frame": object()},
+    ]
+    cleaned = sanitize_detect_results(captchas)
+    assert cleaned == [{"type": "hcaptcha", "sitekey": "abc", "url": "https://example.com"}]

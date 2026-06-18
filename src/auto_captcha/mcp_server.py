@@ -21,15 +21,20 @@ Usage:
     }
 """
 
+from __future__ import annotations
+
 import json
 import os
 import sys
+import time
+from typing import Any
 
 # MCP server using stdio transport
 # Implements the MCP protocol for tool discovery and execution
+from auto_captcha.solver import sanitize_detect_results
 
 
-def create_server():
+def create_server() -> dict[str, Any]:
     """Create and return the MCP server definition."""
     return {
         "name": "auto-captcha",
@@ -90,7 +95,7 @@ def create_server():
     }
 
 
-def handle_tool_call(tool_name: str, arguments: dict) -> dict:
+def handle_tool_call(tool_name: str, arguments: dict[str, Any]) -> dict[str, Any]:
     """Execute a tool and return the result."""
     api_key = os.environ.get("NOPECHA_API_KEY", "")
     if not api_key:
@@ -103,29 +108,27 @@ def handle_tool_call(tool_name: str, arguments: dict) -> dict:
     if tool_name == "captcha_credits":
         return {"credits": solver.get_credits()}
 
-    elif tool_name == "captcha_detect":
+    if tool_name == "captcha_detect":
         url = arguments["url"]
         headless = arguments.get("headless", True)
 
         from playwright.sync_api import sync_playwright
-        import time
 
         with sync_playwright() as p:
             browser = p.chromium.launch(headless=headless, args=["--no-sandbox"])
             page = browser.new_page()
             page.goto(url, timeout=30000)
             time.sleep(3)
-            captchas = solver.detect(page)
+            captchas = sanitize_detect_results(solver.detect(page))
             browser.close()
 
         return {"captchas": captchas, "count": len(captchas)}
 
-    elif tool_name == "captcha_solve":
+    if tool_name == "captcha_solve":
         url = arguments["url"]
         headless = arguments.get("headless", True)
 
         from playwright.sync_api import sync_playwright
-        import time
 
         with sync_playwright() as p:
             browser = p.chromium.launch(headless=headless, args=["--no-sandbox"])
@@ -137,26 +140,27 @@ def handle_tool_call(tool_name: str, arguments: dict) -> dict:
 
         output = []
         for r in results:
-            output.append({
-                "type": r.captcha_type,
-                "success": r.success,
-                "token": r.token,
-                "error": r.error,
-                "attempts": r.attempts,
-                "elapsed_sec": r.elapsed_sec,
-            })
+            output.append(
+                {
+                    "type": r.captcha_type,
+                    "success": r.success,
+                    "token": r.token,
+                    "error": r.error,
+                    "attempts": r.attempts,
+                    "elapsed_sec": r.elapsed_sec,
+                }
+            )
         return {"results": output}
 
     return {"error": f"Unknown tool: {tool_name}"}
 
 
-def run_stdio_server():
+def run_stdio_server() -> None:
     """Run as a stdio MCP server."""
-    import json
-
     server_info = create_server()
 
     while True:
+        request_id: Any = None
         try:
             line = sys.stdin.readline()
             if not line:
@@ -195,9 +199,7 @@ def run_stdio_server():
                 response = {
                     "jsonrpc": "2.0",
                     "id": request_id,
-                    "result": {
-                        "content": [{"type": "text", "text": json.dumps(result, indent=2)}]
-                    },
+                    "result": {"content": [{"type": "text", "text": json.dumps(result, indent=2)}]},
                 }
 
             elif method == "notifications/initialized":
