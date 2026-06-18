@@ -14,10 +14,12 @@ def pytest_addoption(parser):
         help="Run integration tests that call NopeCHA API (requires NOPECHA_API_KEY)",
     )
 
+
 @pytest.fixture
 def solver():
     """Return a CaptchaSolver with a dummy API key."""
     return CaptchaSolver(api_key="test-key-for-unit-tests")
+
 
 @pytest.fixture
 def sample_captcha_result():

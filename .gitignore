@@ -1,2 +1,4 @@
 # Build artifacts
 build/
+__pycache__/
+.venv/

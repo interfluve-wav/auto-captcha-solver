@@ -19,22 +19,29 @@ import requests
 
 CaptchaInfo = dict[str, Any]
 
+
+def sanitize_detect_results(captchas: list[CaptchaInfo]) -> list[CaptchaInfo]:
+    """Strip non-JSON-serializable fields (e.g. Playwright frames) from detect results."""
+    return [{k: v for k, v in cap.items() if k != "frame"} for cap in captchas]
+
+
 # NopeCHA Token API endpoints
 TOKEN_ENDPOINTS = {
-    "hcaptcha":    "/v1/token/hcaptcha",
-    "recaptcha2":  "/v1/token/recaptcha2",
-    "recaptcha3":  "/v1/token/recaptcha3",
+    "hcaptcha": "/v1/token/hcaptcha",
+    "recaptcha2": "/v1/token/recaptcha2",
+    "recaptcha3": "/v1/token/recaptcha3",
 }
 
 # Experimental — NopeCHA queue extremely slow (5-10+ min), needs proxy
 EXPERIMENTAL_ENDPOINTS = {
-    "turnstile":   "/v1/token/turnstile",
+    "turnstile": "/v1/token/turnstile",
 }
 
 
 @dataclass
 class CaptchaResult:
     """Result of a captcha solve attempt."""
+
     success: bool
     captcha_type: str = ""
     token: str = ""
@@ -122,12 +129,14 @@ class CaptchaSolver:
                 if not sitekey:
                     sitekey = self._extract_dom_sitekey(page, "hcaptcha")
                 if sitekey:
-                    found.append({
-                        "type": "hcaptcha",
-                        "sitekey": sitekey,
-                        "url": page_url,
-                        "frame": frame,
-                    })
+                    found.append(
+                        {
+                            "type": "hcaptcha",
+                            "sitekey": sitekey,
+                            "url": page_url,
+                            "frame": frame,
+                        }
+                    )
                     seen_types.add("hcaptcha")
 
             elif "recaptcha" in furl and "/anchor" in furl and "recaptcha2" not in seen_types:
@@ -135,12 +144,14 @@ class CaptchaSolver:
                 if not sitekey:
                     sitekey = self._extract_dom_sitekey(page, "recaptcha")
                 if sitekey:
-                    found.append({
-                        "type": "recaptcha2",
-                        "sitekey": sitekey,
-                        "url": page_url,
-                        "frame": frame,
-                    })
+                    found.append(
+                        {
+                            "type": "recaptcha2",
+                            "sitekey": sitekey,
+                            "url": page_url,
+                            "frame": frame,
+                        }
+                    )
                     seen_types.add("recaptcha2")
 
             elif "challenges.cloudflare.com" in furl and "turnstile" not in seen_types:
@@ -148,20 +159,22 @@ class CaptchaSolver:
                 if not sitekey:
                     sitekey = self._extract_dom_sitekey(page, "turnstile")
                 if sitekey:
-                    found.append({
-                        "type": "turnstile",
-                        "sitekey": sitekey,
-                        "url": page_url,
-                        "frame": frame,
-                    })
+                    found.append(
+                        {
+                            "type": "turnstile",
+                            "sitekey": sitekey,
+                            "url": page_url,
+                            "frame": frame,
+                        }
+                    )
                     seen_types.add("turnstile")
 
         # Method 2: DOM fallback for each type — must match specific widget markers
         if "hcaptcha" not in seen_types:
-            has_hcaptcha_widget = page.evaluate('''() => {
+            has_hcaptcha_widget = page.evaluate("""() => {
                 return !!document.querySelector('.h-captcha, [data-hcaptcha-sitekey]') ||
                     document.querySelectorAll('iframe[src*="hcaptcha"]').length > 0;
-            }''')
+            }""")
             if has_hcaptcha_widget:
                 sk = self._extract_dom_sitekey(page, "hcaptcha")
                 if sk:
@@ -169,17 +182,17 @@ class CaptchaSolver:
                     seen_types.add("hcaptcha")
 
         if "recaptcha2" not in seen_types:
-            has_recaptcha_widget = page.evaluate('''() => {
+            has_recaptcha_widget = page.evaluate("""() => {
                 return !!document.querySelector('.g-recaptcha, .g-recaptcha-response') ||
                     document.querySelectorAll('iframe[src*="recaptcha"]').length > 0;
-            }''')
+            }""")
             if has_recaptcha_widget:
                 sk = self._extract_dom_sitekey(page, "recaptcha")
                 if sk:
                     # Distinguish v2 (visible widget) from v3 (invisible)
-                    has_size = page.evaluate('''() => {
+                    has_size = page.evaluate("""() => {
                         return !!document.querySelector('.g-recaptcha[data-size], [data-size]');
-                    }''')
+                    }""")
                     if has_size:
                         found.append({"type": "recaptcha2", "sitekey": sk, "url": page_url})
                     else:
@@ -187,7 +200,7 @@ class CaptchaSolver:
                     seen_types.add("recaptcha2")
 
         if "recaptcha3" not in seen_types and "recaptcha2" not in seen_types:
-            has_v3 = page.evaluate('''() => {
+            has_v3 = page.evaluate("""() => {
                 // Must have recaptcha script with render param, AND no visible widget
                 if (document.querySelector('.g-recaptcha, .g-recaptcha-response, iframe[src*="recaptcha"]')) return false;
                 const scripts = document.querySelectorAll('script[src*="recaptcha"]');
@@ -195,7 +208,7 @@ class CaptchaSolver:
                     if (s.src.includes('render=')) return true;
                 }
                 return false;
-            }''')
+            }""")
             if has_v3:
                 sk = self._extract_dom_sitekey(page, "recaptcha3")
                 if sk:
@@ -203,10 +216,10 @@ class CaptchaSolver:
                     seen_types.add("recaptcha3")
 
         if "turnstile" not in seen_types:
-            has_turnstile_widget = page.evaluate('''() => {
+            has_turnstile_widget = page.evaluate("""() => {
                 return !!document.querySelector('.cf-turnstile') ||
                     document.querySelectorAll('script[src*="turnstile"]').length > 0;
-            }''')
+            }""")
             if has_turnstile_widget:
                 sk = self._extract_dom_sitekey(page, "turnstile")
                 if sk:
@@ -230,7 +243,7 @@ class CaptchaSolver:
             if captcha_type == "hcaptcha":
                 return cast(
                     str | None,
-                    page.evaluate('''() => {
+                    page.evaluate("""() => {
                     // data-sitekey on any element
                     let el = document.querySelector('[data-sitekey]');
                     if (el) return el.getAttribute('data-sitekey');
@@ -240,12 +253,12 @@ class CaptchaSolver:
                         if (m) return m[1];
                     }
                     return null;
-                }'''),
+                }"""),
                 )
             elif captcha_type == "recaptcha":
                 return cast(
                     str | None,
-                    page.evaluate('''() => {
+                    page.evaluate("""() => {
                     let el = document.querySelector('.g-recaptcha, [data-sitekey]');
                     if (el) return el.getAttribute('data-sitekey');
                     for (const f of document.querySelectorAll('iframe')) {
@@ -253,12 +266,12 @@ class CaptchaSolver:
                         if (m) return m[1];
                     }
                     return null;
-                }'''),
+                }"""),
                 )
             elif captcha_type == "recaptcha3":
                 return cast(
                     str | None,
-                    page.evaluate(r'''() => {
+                    page.evaluate(r"""() => {
                     // reCAPTCHA v3 is loaded via grecaptcha.enterprise.execute or grecaptcha.execute
                     const scripts = document.querySelectorAll('script[src*="recaptcha"]');
                     for (const s of scripts) {
@@ -271,12 +284,12 @@ class CaptchaSolver:
                         if (m) return m[1];
                     }
                     return null;
-                }'''),
+                }"""),
                 )
             elif captcha_type == "turnstile":
                 return cast(
                     str | None,
-                    page.evaluate('''() => {
+                    page.evaluate("""() => {
                     let el = document.querySelector('[data-sitekey]');
                     if (el) {
                         const parent = el.closest('.cf-turnstile') || el;
@@ -288,7 +301,7 @@ class CaptchaSolver:
                         if (m) return m[1];
                     }
                     return null;
-                }'''),
+                }"""),
                 )
         except Exception:
             pass
@@ -382,17 +395,21 @@ class CaptchaSolver:
         """Inject solved token into the page's captcha callback."""
         try:
             if captcha_type == "hcaptcha":
-                page.evaluate('''(t) => {
+                page.evaluate(
+                    """(t) => {
                     document.querySelectorAll(
                         "textarea[name='h-captcha-response'], textarea#g-recaptcha-response"
                     ).forEach(ta => ta.value = t);
                     if (typeof hcaptcha !== 'undefined') {
                         try { hcaptcha.execute(); } catch(e) {}
                     }
-                }''', token)
+                }""",
+                    token,
+                )
 
             elif captcha_type == "recaptcha2":
-                page.evaluate('''(t) => {
+                page.evaluate(
+                    """(t) => {
                     const ta = document.getElementById("g-recaptcha-response");
                     if (ta) { ta.value = t; ta.style.display = "block"; }
                     document.querySelectorAll("textarea[name='g-recaptcha-response']")
@@ -409,10 +426,13 @@ class CaptchaSolver:
                             }
                         }
                     } catch(e) {}
-                }''', token)
+                }""",
+                    token,
+                )
 
             elif captcha_type == "recaptcha3":
-                page.evaluate('''(t) => {
+                page.evaluate(
+                    """(t) => {
                     // reCAPTCHA v3 — inject token and trigger callback
                     document.querySelectorAll("textarea[name='g-recaptcha-response']")
                         .forEach(x => x.value = t);
@@ -430,10 +450,13 @@ class CaptchaSolver:
                             }
                         } catch(e) {}
                     }
-                }''', token)
+                }""",
+                    token,
+                )
 
             elif captcha_type == "turnstile":
-                page.evaluate('''(t) => {
+                page.evaluate(
+                    """(t) => {
                     // Cloudflare Turnstile — inject into hidden input
                     document.querySelectorAll("input[name='cf-turnstile-response']")
                         .forEach(x => x.value = t);
@@ -443,7 +466,9 @@ class CaptchaSolver:
                     if (typeof turnstile !== 'undefined') {
                         try { turnstile.getResponse(); } catch(e) {}
                     }
-                }''', token)
+                }""",
+                    token,
+                )
 
             return True
         except Exception:

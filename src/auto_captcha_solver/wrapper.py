@@ -13,7 +13,7 @@ Usage:
 from __future__ import annotations
 
 import time
-from typing import Any
+from typing import Any, cast
 
 from .solver import CaptchaSolver
 
@@ -114,11 +114,11 @@ class SmartPage:
 
     @property
     def url(self) -> str:
-        return self._page.url
+        return cast(str, self._page.url)
 
     @property
     def title(self) -> str:
-        return self._page.title()
+        return cast(str, self._page.title())
 
     @property
     def captcha_log(self) -> list[CaptchaLogEntry]:
@@ -145,12 +145,14 @@ def smart_page(
             page.fill("#input", "value")
             page.click("#submit")
 
-    Pass ``proxy`` for NopeCHA solve requests. Route browser traffic through the
-    same sticky endpoint via Playwright's ``proxy`` launch kwarg, e.g.
-    ``smart_page(api_key="...", proxy=nopecha_proxy, proxy=playwright_proxy)`` —
-    use ``launch_kwargs`` for the browser: ``smart_page(..., proxy=nopecha_proxy, **{"proxy": playwright_proxy})``.
+    Pass ``proxy`` for NopeCHA solve requests. For browser traffic, pass Playwright's
+    ``proxy`` via launch kwargs so both paths share the same sticky session, e.g.
+    ``smart_page(api_key="...", proxy=nopecha_proxy, proxy=browser_proxy)`` is wrong —
+    use ``smart_page(api_key="...", proxy=nopecha_proxy, **{"proxy": browser_proxy})``.
     """
-    return _SmartPageContext(api_key=api_key, headless=headless, proxy=proxy, launch_kwargs=launch_kwargs)
+    return _SmartPageContext(
+        api_key=api_key, headless=headless, proxy=proxy, launch_kwargs=launch_kwargs
+    )
 
 
 class _SmartPageContext:

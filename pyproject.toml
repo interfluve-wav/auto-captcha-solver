@@ -84,6 +84,10 @@ no_implicit_optional = true
 warn_redundant_casts = true
 warn_unused_ignores = true
 
+[[tool.mypy.overrides]]
+module = ["playwright.*"]
+ignore_missing_imports = true
+
 [tool.pytest.ini_options]
 addopts = "-v --tb=short"
 filterwarnings = [
