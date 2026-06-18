@@ -19,7 +19,8 @@ jobs:
       - name: Install dev dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install ruff mypy types-requests
+          pip install ruff mypy
+          pip install .[dev]
       - name: Ruff lint
         run: ruff check src tests
       - name: mypy typecheck
@@ -75,7 +76,7 @@ jobs:
       - name: Get version from package
         id: version
         run: |
-          VERSION=$(python -c "import importlib.util; spec=importlib.util.spec_from_file_location('pkg','src/auto_captcha_solver/__init__.py'); mod=importlib.util.module_from_spec(spec); spec.loader.exec_module(mod); print(mod.__version__)")
+          VERSION=$(grep '__version__' src/auto_captcha_solver/__init__.py | cut -d'"' -f2)
           echo "version=$VERSION" >> $GITHUB_OUTPUT
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
