@@ -1,72 +1,53 @@
 """
-Core captcha solver — detects and solves captchas via NopeCHA Token API.
+Core captcha solver — detects and solves captchas via pluggable providers.
 
-Supported types: hCaptcha, reCAPTCHA v2, reCAPTCHA v3, Cloudflare Turnstile.
+Supported providers: NopeCHA (default), CaptchaAI (2Captcha-compatible API).
 
 Usage:
-    from auto_captcha import CaptchaSolver
+    from auto_captcha_solver import CaptchaSolver
 
-    solver = CaptchaSolver(api_key="your-key")
+    solver = CaptchaSolver(api_key="your-key", provider="nopecha")
     results = solver.auto_solve(page)
 """
 
+from __future__ import annotations
+
 import re
 import time
-from dataclasses import dataclass
 from typing import Any, cast
 
-import requests
+from .providers import get_provider
+from .providers.base import CaptchaProvider
+from .providers.nopecha import EXPERIMENTAL_ENDPOINTS, TOKEN_ENDPOINTS
+from .types import CaptchaInfo, CaptchaResult, sanitize_detect_results
 
-CaptchaInfo = dict[str, Any]
-
-
-def sanitize_detect_results(captchas: list[CaptchaInfo]) -> list[CaptchaInfo]:
-    """Strip non-JSON-serializable fields (e.g. Playwright frames) from detect results."""
-    return [{k: v for k, v in cap.items() if k != "frame"} for cap in captchas]
-
-
-# NopeCHA Token API endpoints
-TOKEN_ENDPOINTS = {
-    "hcaptcha": "/v1/token/hcaptcha",
-    "recaptcha2": "/v1/token/recaptcha2",
-    "recaptcha3": "/v1/token/recaptcha3",
-}
-
-# Experimental — NopeCHA queue extremely slow (5-10+ min), needs proxy
-EXPERIMENTAL_ENDPOINTS = {
-    "turnstile": "/v1/token/turnstile",
-}
-
-
-@dataclass
-class CaptchaResult:
-    """Result of a captcha solve attempt."""
-
-    success: bool
-    captcha_type: str = ""
-    token: str = ""
-    error: str = ""
-    attempts: int = 0
-    elapsed_sec: float = 0.0
+__all__ = [
+    "CaptchaSolver",
+    "CaptchaResult",
+    "CaptchaInfo",
+    "sanitize_detect_results",
+    "TOKEN_ENDPOINTS",
+    "EXPERIMENTAL_ENDPOINTS",
+]
 
 
 class CaptchaSolver:
     """
     Drop-in captcha solver for Playwright browser automation.
-    Supports hCaptcha, reCAPTCHA v2/v3, and Cloudflare Turnstile via NopeCHA API.
 
     Args:
-        api_key: NopeCHA API key
+        api_key: Provider API key
+        provider: ``"nopecha"`` (default) or ``"captchaai"``
         poll_interval: Seconds between status polls (default: 4.0)
         max_polls: Maximum polling attempts (default: 25)
         timeout_sec: Overall timeout in seconds (default: 120.0)
+        proxy: Optional proxy dict (format depends on provider)
     """
-
-    BASE_URL = "https://api.nopecha.com"
 
     def __init__(
         self,
         api_key: str,
+        provider: str | CaptchaProvider = "nopecha",
         poll_interval: float = 4.0,
         max_polls: int = 25,
         timeout_sec: float = 120.0,
@@ -76,39 +57,20 @@ class CaptchaSolver:
         self.poll_interval = poll_interval
         self.max_polls = max_polls
         self.timeout_sec = timeout_sec
-        self.proxy = proxy  # {"scheme": "http", "host": "1.2.3.4", "port": 8080, "username": "...", "password": "..."}
-
-    # ── API Layer ────────────────────────────────────────────────
-
-    def _api(
-        self, path: str, method: str = "GET", body: dict[str, Any] | None = None
-    ) -> tuple[int, dict[str, Any]]:
-        headers = {
-            "Content-Type": "application/json",
-            "Authorization": f"Basic {self.api_key}",
-        }
-        r = requests.request(
-            method,
-            f"{self.BASE_URL}{path}",
-            headers=headers,
-            json=body,
-            timeout=30,
-        )
-        try:
-            return r.status_code, r.json()
-        except Exception:
-            return r.status_code, {"error": "invalid_json"}
+        self.proxy = proxy
+        if isinstance(provider, str):
+            self._provider = get_provider(provider, api_key)
+        else:
+            self._provider = provider
+        self.provider = self._provider.name
 
     def get_credits(self) -> int:
-        """Check remaining NopeCHA credits."""
-        status, data = self._api("/v1/status")
-        if status == 200:
-            return int(data.get("credit", 0))
-        return 0
+        """Check remaining provider credits/balance."""
+        return self._provider.get_credits()
 
     # ── Detection ────────────────────────────────────────────────
 
-    def detect(self, page: Any) -> list:
+    def detect(self, page: Any) -> list[CaptchaInfo]:
         """
         Scan a Playwright page for captcha challenges.
 
@@ -310,83 +272,15 @@ class CaptchaSolver:
     # ── Solving ──────────────────────────────────────────────────
 
     def solve(self, captcha_type: str, sitekey: str, url: str) -> CaptchaResult:
-        """
-        Submit a captcha to NopeCHA and poll for the solved token.
-
-        Args:
-            captcha_type: "hcaptcha", "recaptcha2", "recaptcha3", or "turnstile"
-            sitekey: The site's captcha sitekey
-            url: The page URL
-
-        Returns:
-            CaptchaResult with success=True and token on success.
-        """
-        start = time.time()
-
-        ep = TOKEN_ENDPOINTS.get(captcha_type) or EXPERIMENTAL_ENDPOINTS.get(captcha_type)
-        if not ep:
-            return CaptchaResult(
-                success=False,
-                captcha_type=captcha_type,
-                error=f"unsupported type: {captcha_type}. Supported: {list(TOKEN_ENDPOINTS.keys())}",
-                elapsed_sec=time.time() - start,
-            )
-
-        # Submit job
-        body: dict[str, Any] = {"sitekey": sitekey, "url": url}
-        if self.proxy:
-            body["proxy"] = self.proxy
-
-        status, data = self._api(ep, "POST", body)
-
-        if status != 200 or not data.get("data"):
-            return CaptchaResult(
-                success=False,
-                captcha_type=captcha_type,
-                error=f"submit failed: {data}",
-                elapsed_sec=time.time() - start,
-            )
-
-        job_id = data["data"]
-
-        # Poll for result
-        for i in range(self.max_polls):
-            elapsed = time.time() - start
-            if elapsed > self.timeout_sec:
-                break
-
-            time.sleep(self.poll_interval)
-            status, result = self._api(f"{ep}?id={job_id}")
-
-            err = result.get("error")
-            if err == 14:  # Still in queue
-                continue
-            if err:
-                return CaptchaResult(
-                    success=False,
-                    captcha_type=captcha_type,
-                    error=f"error {err}: {result.get('message', '')}",
-                    attempts=i + 1,
-                    elapsed_sec=time.time() - start,
-                )
-            if result.get("data"):
-                token = result["data"]
-                if isinstance(token, list):
-                    token = token[0]
-                return CaptchaResult(
-                    success=True,
-                    captcha_type=captcha_type,
-                    token=token,
-                    attempts=i + 1,
-                    elapsed_sec=time.time() - start,
-                )
-
-        return CaptchaResult(
-            success=False,
-            captcha_type=captcha_type,
-            error="timeout",
-            attempts=self.max_polls,
-            elapsed_sec=time.time() - start,
+        """Submit a captcha to the configured provider and poll for the solved token."""
+        return self._provider.solve(
+            captcha_type,
+            sitekey,
+            url,
+            poll_interval=self.poll_interval,
+            max_polls=self.max_polls,
+            timeout_sec=self.timeout_sec,
+            proxy=self.proxy,
         )
 
     # ── Injection ────────────────────────────────────────────────
@@ -522,12 +416,24 @@ class CaptchaSolver:
 
     # ── Info ──────────────────────────────────────────────────────
 
-    @staticmethod
-    def supported_types() -> list[str]:
-        """Return list of supported captcha types (stable)."""
-        return list(TOKEN_ENDPOINTS.keys())
+    def supported_types(self) -> list[str]:
+        """Return captcha types with stable support for the active provider."""
+        return self._provider.supported_types()
+
+    def experimental_types(self) -> list[str]:
+        """Return experimental captcha types for the active provider."""
+        return self._provider.experimental_types()
 
     @staticmethod
-    def experimental_types() -> list[str]:
-        """Return list of experimental captcha types (slow/unreliable)."""
-        return list(EXPERIMENTAL_ENDPOINTS.keys())
+    def default_supported_types() -> list[str]:
+        """Default (NopeCHA) stable captcha types."""
+        from .providers.nopecha import NopechaProvider
+
+        return NopechaProvider.supported_types()
+
+    @staticmethod
+    def default_experimental_types() -> list[str]:
+        """Default (NopeCHA) experimental captcha types."""
+        from .providers.nopecha import NopechaProvider
+
+        return NopechaProvider.experimental_types()
