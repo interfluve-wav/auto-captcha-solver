@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **reCAPTCHA v2/v3 misclassification** — detection labeled default-size v2 widgets as v3 when the anchor iframe hadn't loaded yet (the DOM fallback relied on a `data-size` attribute that Google only sets for non-default sizes), sending v2 sitekeys to the v3 endpoint and failing with NopeCHA "Invalid request". The frame path also misread enterprise v3 (invisible) anchors as v2. Discriminator is now the rendered `.g-recaptcha` container (v2) vs script-only (v3) on DOM, and `size=invisible` on anchor frames; regression tests cover both pages at early/late load.
+
 ## [0.1.6] - 2026-08-29
 
 ### Added

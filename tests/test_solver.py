@@ -295,3 +295,150 @@ def test_smart_page_wrappers_delegate():
         assert callable(page.type)
         assert callable(page.select_option)
         assert callable(page.locator)
+
+
+# ── Regression: reCAPTCHA v2 vs v3 detection ────────────────────────────
+# Bug (benchmarked Sep 2026): the DOM-fallback used a `data-size` attribute
+# to tell v2 from v3, but default-size v2 widgets don't set data-size. Early
+# in page load (before the anchor iframe appears) a real v2 page was
+# mislabeled recaptcha3, which sent the wrong endpoint/metadata to NopeCHA
+# and failed with "Invalid request". The discriminator is now the rendered
+# .g-recaptcha container (v2) vs its absence (v3) for DOM, and the anchor
+# iframe's size=invisible param for the frame path.
+
+V2_SITEKEY = "6Le-wvkSAAAAAPBMRTvw0Q4Muexq9bi0DJwx_mJ-"
+V3_SITEKEY = "6LdKlZEpAAAAAAOQjzC2v_d36tWxCl6dWsozdSy9"
+
+
+class IdentityFrame:
+    def __init__(self, url):
+        self.url = url
+
+
+class ScriptAwarePage:
+    """Dummy Playwright page: evaluate() routes on script content."""
+
+    def __init__(self, *, url, frames=(), grc_container=False,
+                 grc_sitekey=None, recaptcha_scripts=(), recaptcha_iframes=(),
+                 has_v3_result=False, dom_sitekey=None):
+        self.url = url
+        self._frames = list(frames)
+        self._grc_container = grc_container
+        self._grc_sitekey = grc_sitekey
+        self._recaptcha_scripts = list(recaptcha_scripts)
+        self._recaptcha_iframes = list(recaptcha_iframes)
+        self._has_v3_result = has_v3_result
+        self._dom_sitekey = dom_sitekey
+
+    @property
+    def frames(self):
+        return self._frames
+
+    def evaluate(self, script):
+        s = script
+        # Method 1 helper: extract sitekey from iframe URL
+        if "fonts5" in s:
+            return None
+        # has_v3 expression — has a distinctive `, iframe[src*=` right after the
+        # .g-recaptcha selector (the widget gate does NOT: it closes with ')').
+        if "const scripts = document.querySelectorAll('script[src*=google.com/recaptcha" in s.replace("\\\"", "\""):
+            return self._has_v3_result
+        # has_recaptcha_widget (Method 2 gate)
+        if ".g-recaptcha, .g-recaptcha-response') ||" in s and "querySelectorAll(" in s:
+            has_iframe = any(
+                ("google.com/recaptcha" in f or "recaptcha.net" in f or "gstatic.com/recaptcha" in f)
+                for f in self._recaptcha_iframes
+            )
+            return self._grc_container or self._grc_sitekey is not None or has_iframe
+        # has_container (the new v2/v3 discriminator)
+        if "querySelector('.g-recaptcha')" in s or "querySelector('.g-recaptcha');" in s:
+            return self._grc_container or self._grc_sitekey is not None
+        # reCAPTCHA sitekey from DOM (the .g-recaptcha widget)
+        if "el = document.querySelector('.g-recaptcha[data-sitekey], .g-recaptcha')" in s:
+            if self._grc_sitekey:
+                return self._grc_sitekey
+            for f in self._recaptcha_iframes:
+                import re
+                m = re.search(r"[?&#]k=([A-Za-z0-9_-]+)", f)
+                if m:
+                    return m.group(1)
+            return None
+        # reCAPTCHA v3 sitekey from scripts (render= param)
+        if "render=([A-Za-z0-9_-]+)" in s:
+            for scr in self._recaptcha_scripts:
+                import re
+                m = re.search(r"[?&]render=([A-Za-z0-9_-]+)", scr)
+                if m:
+                    return m.group(1)
+            return None
+        # has_v3 expression
+        if "if (document.querySelector('.g-recaptcha, .g-recaptcha-response" in s:
+            return self._has_v3_result
+        # hCaptcha widget check
+        if ".h-captcha" in s:
+            return False
+        # Turnstile widget check
+        if ".cf-turnstile" in s:
+            return False
+        # has_size fallback — no longer used by recaptcha2 path
+        if "data-size" in s:
+            return False
+        return False
+
+
+def test_detect_v2_default_size_no_anchor_iframe_is_recaptcha2():
+    """The regression: v2 with default size (NO data-size attr) and the anchor
+    iframe not yet present must detect as recaptcha2 (was: recaptcha3)."""
+    s = CaptchaSolver(api_key="k")
+    page = ScriptAwarePage(
+        url="https://www.google.com/recaptcha/api2/demo",
+        grc_container=True,
+        grc_sitekey=V2_SITEKEY,
+    )
+    caps = s.detect(page)
+    types = [c["type"] for c in caps]
+    assert types == ["recaptcha2"], f"expected recaptcha2, got {types}"
+    assert caps[0]["sitekey"] == V2_SITEKEY
+
+
+def test_detect_v2_anchor_iframe_normal_size_is_recaptcha2():
+    """Anchor iframe with size=normal → recaptcha2."""
+    s = CaptchaSolver(api_key="k")
+    anchor = IdentityFrame(
+        f"https://www.google.com/recaptcha/api2/anchor?ar=1&k={V2_SITEKEY}&size=normal"
+    )
+    page = ScriptAwarePage(
+        url="https://www.google.com/recaptcha/api2/demo",
+        frames=[anchor],
+    )
+    caps = s.detect(page)
+    assert [c["type"] for c in caps] == ["recaptcha2"]
+
+
+def test_detect_v3_anchor_iframe_invisible_is_recaptcha3():
+    """Anchor iframe with size=invisible (v3/enterprise) → recaptcha3.
+    Was: always recaptcha2 from the frame path."""
+    s = CaptchaSolver(api_key="k")
+    anchor = IdentityFrame(
+        f"https://www.google.com/recaptcha/enterprise/anchor?ar=1&k={V3_SITEKEY}&size=invisible"
+    )
+    page = ScriptAwarePage(
+        url="https://recaptcha-demo.appspot.com/recaptcha-v3-request-scores.php",
+        frames=[anchor],
+    )
+    caps = s.detect(page)
+    assert [c["type"] for c in caps] == ["recaptcha3"]
+    assert caps[0]["sitekey"] == V3_SITEKEY
+
+
+def test_detect_v3_no_container_script_only_is_recaptcha3():
+    """v3 with no rendered container, only a render= script → recaptcha3."""
+    s = CaptchaSolver(api_key="k")
+    page = ScriptAwarePage(
+        url="https://example.com/v3-page",
+        recaptcha_scripts=[f"https://www.google.com/recaptcha/api.js?render={V3_SITEKEY}"],
+        has_v3_result=True,
+    )
+    caps = s.detect(page)
+    assert [c["type"] for c in caps] == ["recaptcha3"]
+    assert caps[0]["sitekey"] == V3_SITEKEY

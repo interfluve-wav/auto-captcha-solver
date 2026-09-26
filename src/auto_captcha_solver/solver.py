@@ -101,20 +101,22 @@ class CaptchaSolver:
                     )
                     seen_types.add("hcaptcha")
 
-            elif "recaptcha" in furl and "/anchor" in furl and "recaptcha2" not in seen_types:
+            elif "recaptcha" in furl and "/anchor" in furl and "recaptcha2" not in seen_types and "recaptcha3" not in seen_types:
                 sitekey = self._extract_sitekey(frame.url)
                 if not sitekey:
                     sitekey = self._extract_dom_sitekey(page, "recaptcha")
                 if sitekey:
+                    # Anchor iframe carries size=normal (v2) or size=invisible (v3 enterprise)
+                    is_invisible = "size=invisible" in furl
                     found.append(
                         {
-                            "type": "recaptcha2",
+                            "type": "recaptcha3" if is_invisible else "recaptcha2",
                             "sitekey": sitekey,
                             "url": page_url,
                             "frame": frame,
                         }
                     )
-                    seen_types.add("recaptcha2")
+                    seen_types.add("recaptcha3" if is_invisible else "recaptcha2")
 
             elif "challenges.cloudflare.com" in furl and "turnstile" not in seen_types:
                 sitekey = self._extract_sitekey(frame.url)
@@ -143,7 +145,7 @@ class CaptchaSolver:
                     found.append({"type": "hcaptcha", "sitekey": sk, "url": page_url})
                     seen_types.add("hcaptcha")
 
-        if "recaptcha2" not in seen_types:
+        if "recaptcha2" not in seen_types and "recaptcha3" not in seen_types:
             has_recaptcha_widget = page.evaluate("""() => {
                 // Real reCAPTCHA iframes live under google.com/recaptcha, recaptcha.net,
                 // or gstatic.com/recaptcha. We must NOT match a bare 'recaptcha' substring:
@@ -157,11 +159,16 @@ class CaptchaSolver:
             if has_recaptcha_widget:
                 sk = self._extract_dom_sitekey(page, "recaptcha")
                 if sk:
-                    # Distinguish v2 (visible widget) from v3 (invisible)
-                    has_size = page.evaluate("""() => {
-                        return !!document.querySelector('.g-recaptcha[data-size], [data-size]');
+                    # Distinguish v2 (visible widget) from v3 (invisible).
+                    # A rendered .g-recaptcha container is ALWAYS a v2 widget —
+                    # v3 has no container, only a script (render=explicit/none)
+                    # plus a floating badge. The old `data-size` check was wrong:
+                    # default-size v2 widgets don't set data-size, so they were
+                    # mislabeled v3 whenever the anchor iframe hadn't loaded yet.
+                    has_container = page.evaluate("""() => {
+                        return !!document.querySelector('.g-recaptcha');
                     }""")
-                    if has_size:
+                    if has_container:
                         found.append({"type": "recaptcha2", "sitekey": sk, "url": page_url})
                     else:
                         found.append({"type": "recaptcha3", "sitekey": sk, "url": page_url})
