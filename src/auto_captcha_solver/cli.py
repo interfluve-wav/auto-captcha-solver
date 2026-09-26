@@ -92,6 +92,13 @@ def _add_proxy_args(parser: argparse.ArgumentParser) -> None:
         dest="verify_proxy",
         help="Skip the pre-solve proxy egress check",
     )
+    parser.add_argument(
+        "--strict-proxy",
+        action="store_const",
+        const="strict",
+        dest="verify_proxy",
+        help="Abort (exit 2) if the proxy egress preflight fails",
+    )
 
 
 def _build_proxy(args) -> dict | None:
@@ -259,6 +266,9 @@ def main() -> None:
                 print(f"Proxy preflight OK — egress {info['ip']} ({info.get('country')})")
             except RuntimeError as exc:
                 print(f"Proxy preflight FAILED — {exc}")
+                if getattr(args, "verify_proxy", True) == "strict":
+                    print("Aborting (--strict-proxy).", file=sys.stderr)
+                    sys.exit(2)
                 print("Continuing anyway (--no-proxy-check to silence); "
                       "Turnstile/reCAPTCHA-v3 solves will likely fail.")
 

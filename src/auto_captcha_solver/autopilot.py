@@ -294,7 +294,7 @@ def auto_solve_url(
     launch_kwargs: dict[str, Any] | None = None,
     cdp_url: str | None = None,
     connect_kwargs: dict[str, Any] | None = None,
-    verify_proxy: bool = True,
+    verify_proxy: bool | str = True,
     solver_kwargs: dict[str, Any] | None = None,
 ) -> AutoSolveReport:
     """Self-contained: launch a browser, load a URL, solve every captcha, report.
@@ -340,6 +340,10 @@ def auto_solve_url(
             ``timeout``).
         solver_kwargs: Extra CaptchaSolver kwargs (e.g. ``timeout_sec=300``,
             ``max_polls=60``) — useful for Turnstile's slow experimental queue.
+        verify_proxy: Preflight egress check behavior. ``True`` (default)
+            warns and continues on failure; ``"strict"`` aborts with
+            ``RuntimeError`` before any browser launch or credit spend;
+            ``False`` skips the check entirely.
 
     Returns:
         AutoSolveReport (``solved`` is True if any captcha was solved).
@@ -362,6 +366,10 @@ def auto_solve_url(
             info = check_proxy_egress(session_proxy)
             print(f"Proxy preflight OK — egress {info['ip']} ({info['country']})")
         except RuntimeError as exc:
+            if verify_proxy == "strict":
+                raise RuntimeError(
+                    f"proxy preflight FAILED (strict mode): {exc}"
+                ) from exc
             print(f"Proxy preflight FAILED — {exc}")
             print("Continuing anyway (set verify_proxy=False to silence this); "
                   "Turnstile/reCAPTCHA-v3 solves will likely fail.")
