@@ -340,6 +340,63 @@ def test_auto_solve_url_skips_preflight_when_disabled(monkeypatch):
     assert "preflight" not in calls
 
 
+def test_auto_solve_url_strict_mode_aborts_on_preflight_failure(monkeypatch):
+    """verify_proxy='strict' must raise before any browser launch or credit
+    spend when the egress preflight fails (dead proxy, bad creds, blocked
+    network)."""
+    from auto_captcha_solver import auto_solve_url
+
+    calls: dict = {}
+    _install_fake_playwright(monkeypatch, calls)
+
+    from auto_captcha_solver import autopilot
+
+    def fake_check(proxy, **k):
+        raise RuntimeError("proxy connect failed")
+
+    monkeypatch.setattr(autopilot, "check_proxy_egress", fake_check)
+    proxy = {"scheme": "http", "host": "h", "port": 7777}
+    try:
+        auto_solve_url(
+            "https://x",
+            api_key="k",
+            proxy=proxy,
+            verify_proxy="strict",
+            max_wait_sec=0.0,
+            humanize=False,
+        )
+        raise AssertionError("expected RuntimeError")
+    except RuntimeError as e:
+        assert "strict mode" in str(e)
+    assert "launch" not in calls  # never got to browser launch
+
+
+def test_auto_solve_url_strict_mode_passes_on_success(monkeypatch):
+    """verify_proxy='strict' with a healthy proxy proceeds to solve."""
+    from auto_captcha_solver import auto_solve_url
+
+    calls: dict = {}
+    _install_fake_playwright(monkeypatch, calls)
+
+    from auto_captcha_solver import autopilot
+
+    def fake_check(proxy, **k):
+        return {"ok": True, "ip": "203.0.113.77", "country": "US", "raw": ""}
+
+    monkeypatch.setattr(autopilot, "check_proxy_egress", fake_check)
+    proxy = {"scheme": "http", "host": "h", "port": 7777}
+    report = auto_solve_url(
+        "https://x",
+        api_key="k",
+        proxy=proxy,
+        verify_proxy="strict",
+        max_wait_sec=0.0,
+        humanize=False,
+    )
+    assert report.proxy == proxy
+    assert calls.get("launch") is not None
+
+
 # ── auto_solve_url browser mode (local vs CDP) ─────────────────────────
 
 
